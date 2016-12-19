@@ -42,3 +42,4 @@ decode_file(F) when is_list(F) ->
                               _ -> {error, Reason} 
                          end
       end.
+

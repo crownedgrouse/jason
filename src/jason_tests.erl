@@ -3,14 +3,15 @@
 -include_lib("eunit/include/eunit.hrl").
 
 
-jason_decode_test() -> 
 
-    
+
+jason_decode_literals_test() -> 
      %% Literals
      ?assertEqual(false, jason:decode(<<"false">>)),
      ?assertEqual(true , jason:decode(<<"true">>)),
-     ?assertEqual(null , jason:decode(<<"null">>)),
+     ?assertEqual(null , jason:decode(<<"null">>)).
 
+jason_decode_numbers_test() -> 
      %% Numbers: Integer
      % positive integer
       ?assertEqual(1, jason:decode(<<"1">>)),
@@ -26,7 +27,7 @@ jason_decode_test() ->
       ?assertEqual(1 , jason:decode(<<"01">>)),
       ?assertEqual(-1, jason:decode(<<"-01">>)),
      % integer can't begin with an explicit plus sign",
-     % TODO ?assertMatch({error, {badarg, _}}, jason:decode(<<"+1">>)),
+     % TODO ?assertMatch({error, {badarg, _}}, jason:decode(<<"+1">>))
 
      %% Numbers: Floats
      % float: decimal notation",
@@ -48,97 +49,82 @@ jason_decode_test() ->
      %?assertMatch({error, {badarg, _}}, jason:decode(<<"0.1ee-1">>)), % duplicated 'e'
      %?assertMatch({error, {badarg, _}}, jason:decode(<<"0.1e--1">>)), % duplicated sign
      %?assertEqual(0.1, <<".2">>}, jason:decode(<<"0.1.2">>)),     % duplicated '.': interpreted as individual tokens
+      ok.
 
+jason_decode_strings_test() -> 
      %% Strings
      % simple string
-     ?assertEqual("abc", jason:decode(<<"\"abc\"">>)),
-     ?assertEqual("abc", jason:decode("\"abc\"")),
-     ?assertEqual("abc", jason:decode('"abc"')),
+     ?assertEqual(<<"abc def">>, jason:decode(<<"\"abc def\"">>)),
+     ?assertEqual(<<"abc def">>, jason:decode("\"abc def\"")),
+     ?assertEqual(<<" abc def ">>, jason:decode('" abc def "')),
      % string: escaped characters",
      Input    = list_to_binary([$", [[$\\, C] || C <- [$", $/, $\\, $b, $f, $n, $r, $t]], $"]),
-     Expected = "\"\/\\\b\f\n\r\t",
+     Expected = <<"\"\/\\\b\f\n\r\t">>,
      ?assertEqual(Expected, jason:decode(Input)),
      % string: escaped Unicode characters",
      %% japanese
      Input1    = <<"\"\\u3042\\u3044\\u3046\\u3048\\u304A\"">>,
      Expected1 = "あいうえお",  % assumed that the encoding of this file is UTF-8
-     ?assertEqual(Expected1, jason:decode(Input1)),
+     ?assertEqual(Expected1, unicode:characters_to_list(jason:decode(Input1))),
 
      %% ascii
      Input2    = <<"\"\\u0061\\u0062\\u0063\"">>,
-     Expected2 = "abc",
+     Expected2 = <<"abc">>,
      ?assertEqual(Expected2, jason:decode(Input2)),
 
      %% other multi-byte characters
      Input3    = <<"\"\\u06DD\\u06DE\\u10AE\\u10AF\"">>,
      Expected3 = "۝۞ႮႯ",
-     ?assertEqual(Expected3, jason:decode(Input3)),
+     ?assertEqual(Expected3, unicode:characters_to_list(jason:decode(Input3))),
 
      %% mixture of ascii and japanese characters
      Input4    = <<"\"a\\u30421\\u3044bb\\u304622\\u3048ccc\\u304A333\"">>,
      Expected4 = "aあ1いbbう22えcccお333",  % assumed that the encoding of this file is UTF-8
-     ?assertEqual(Expected4, jason:decode(Input4)),
+     ?assertEqual(Expected4, unicode:characters_to_list(jason:decode(Input4))),
      % string: surrogate pairs
      %Input5    = <<"\"\\ud848\\udc49\\ud848\\udc9a\\ud848\\udcfc\"">>,
      %Expected5 = "𢁉𢂚𢃼",
      %?assertEqual(Expected5, jason:decode(Input5)) ,
 
       % string: invalid escape characters",
+     ok.
 
-
+jason_decode_arrays_test() -> 
      %% Arrays
      % simple array",
-     Input6    = <<"[1,2,\"abc\",null]">>,
-     Expected6 = [1, 2, "abc", null],
+     Input6    = <<"[1,2,\"abc def\",null]">>,
+     Expected6 = [1, 2, <<"abc def">>, null],
      ?assertEqual(Expected6, jason:decode(Input6)),
      % array: contains whitespaces
-     Input7    = <<"[  1,\t2, \n \"abc\",\r null]">>,
-     Expected7 = [1, 2, "abc", null],
+     Input7    = <<"[  1,\t2, \n \"abc def\",\r null]">>,
+     Expected7 = [1, 2, <<"abc def">>, null],
      ?assertEqual(Expected7, jason:decode(Input7)),
      % empty array
      ?assertEqual([], jason:decode(<<"[]">>)),
      ?assertEqual([], jason:decode(<<"[ \t\r\n]">>)),
      % array: trailing comma is disallowed
-     Input8 = <<"[1, 2, \"abc\", null, ]">>,
+     Input8 = <<"[1, 2, \"abc def\", null, ]">>,
      ?assertMatch({error, _, _}, jason:decode(Input8)),
      % array: missing comma
-     Input9 = <<"[1 2, \"abc\", null]">>, % a missing comma between '1' and '2'
+     Input9 = <<"[1 2, \"abc def\", null]">>, % a missing comma between '1' and '2'
      ?assertMatch({error, _, _}, jason:decode(Input9)),
      % array: missing closing bracket
-     Input10 = <<"[1, 2, \"abc\", null">>,
+     Input10 = <<"[1, 2, \"abc def\", null">>,
      ?assertMatch({error, _, _}, jason:decode(Input10)),
+     ok.
 
+jason_decode_objects_test() -> 
      %% Objects
-     % simple object
-     %Input    = <<"{\"1\":2,\"key\":\"value\"}">>,
-     %Expected = ?OBJ2(<<"1">>, 2, <<"key">>, <<"value">>),
-     %?assertEqual(Expected, jason:decode(Input)), % `map' is the default format
-     %?assertEqual(Expected, jason:decode(Input, [])),
-     % simple object: tuple or proplist
+     % simple object -> Record TODO
+
+     % simple object -> Struct
      Input11   = <<"{\"1\":2,\"key\":\"value\"}">>,
-     Expected11 = {struct,[{"1",2},{"key","value"}]},
+     Expected11 = {struct,[{<<"1">>,2},{<<"key">>,<<"value">>}]},
      ?assertEqual(Expected11, jason:decode(Input11, [])),
-     % object: contains whitespaces
-     %Input    = <<"{  \"1\" :\t 2,\n\r\"key\" :   \n  \"value\"}">>,
-     %Expected = ?OBJ2(<<"1">>, 2, <<"key">>, <<"value">>),
-     %?assertEqual(Expected, jason:decode(Input)),
      % empty object
-     %?assertEqual(?OBJ0, jason:decode(<<"{}">>)),
-     %?assertEqual(?OBJ0, jason:decode(<<"{ \t\r\n}">>)),
      ?assertEqual({struct,[]}, jason:decode(<<"{}">>, [])),
      ?assertEqual({struct,[]}, jason:decode(<<"{}">>, [])),
-     % empty object: map
-     %?assertEqual(?OBJ0, jason:decode(<<"{}">>, [])),
-     % duplicated members: map
-     %Input    = <<"{\"1\":\"first\",\"1\":\"second\"}">>,
-     %case ?MAP_OBJECT_TYPE of
-     %    map   ->
-     %        Expected = ?OBJ1(<<"1">>, <<"first">>), % the first (leftmost) value is used
-     %        ?assertEqual(Expected, jason:decode(Input, []));
-     %    tuple ->
-     %        Expected = ?OBJ2(<<"1">>, <<"first">>, <<"1">>, <<"second">>),
-     %        ?assertEqual(Expected, jason:decode(Input, []))
-     %end,
+     % simple object -> map
      % object: trailing comma is disallowed
      Input12 = <<"{\"1\":2, \"key\":\"value\", }">>,
      ?assertMatch({error, _, _}, jason:decode(Input12, [])),
@@ -156,12 +142,7 @@ jason_decode_test() ->
      ?assertMatch({error, _, _} , jason:decode(Input16)),
      % object: missing closing brace
      Input17 = <<"{\"1\":2 \"key\":\"value\"">>,
-     ?assertMatch({error, _, _} , jason:decode(Input17))
-
-     %% Others
-     % compound data
-     %Input    = <<"  [true, {\"1\" : 2, \"array\":[[[[1]]], {\"ab\":\"cd\"}, false]}, null]   ">>,
-     %Expected = [true, ?OBJ2(<<"1">>, 2, <<"array">>, [[[[1]]], ?OBJ1(<<"ab">>, <<"cd">>), false]), null],
-     %?assertEqual(Expected, <<"   ">>}, jason:decode(Input))   
-     .
+     ?assertMatch({error, _, _} , jason:decode(Input17)),
+     ok.
+     
 

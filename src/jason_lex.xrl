@@ -7,60 +7,29 @@ WS = [\s|\t|\r|\n]
 EXP = [e|E]
 
 Rules.
-\[ : {token, {'begin-array', TokenLine, '['}}.
-\] : {token, {'end-array', TokenLine, ']'}}.
-\{ : {token, {'begin-object', TokenLine, '{'}}.
-\} : {token, {'end-object', TokenLine, '}'}}.
-\: : {token, {'name-separator', TokenLine, ':'}}.
-\, : {token, {'value-separator', TokenLine, ','}}.
-false  : case get(str) of
-              true -> {token, {'chr', TokenLine, TokenChars}} ;
-              _    -> {token, {'false', TokenLine}}
-         end.
-null   : case get(str) of
-              true -> {token, {'chr', TokenLine, TokenChars}} ;
-              _    -> {token, {'null', TokenLine}}
-         end.
-true   : case get(str) of
-              true -> {token, {'chr', TokenLine, TokenChars}} ;
-              _    -> {token, {'true', TokenLine}}
-         end.
-\-     : case get(str) of
-              true -> {token, {'chr', TokenLine, TokenChars}} ;
-              _    -> {token, {minus, TokenLine, '-'}}
-         end.
-\+     : case get(str) of
-              true -> {token, {'chr', TokenLine, TokenChars}} ;
-              _    -> {token, {plus , TokenLine, '+'}}
-         end.
-\.     : case get(str) of
-              true -> {token, {'chr', TokenLine, TokenChars}} ;
-              _    -> {token, {'decimal-point', TokenLine, '.'}}
-         end.
-{EXP} : case get(str) of
-              true -> {token, {'chr', TokenLine, TokenChars}} ;
-              _    -> {token, {exponent, TokenLine, TokenChars}}
-         end.
-{ESC}  : case get(esc) of 
-              undefined -> put(esc, true),
-                           skip_token ;
-              true  -> put(esc, false),
-                       {token, {'chr', TokenLine, "\\" ++ TokenChars}};
-              false -> put(esc, true),
-                       skip_token
-         end.
-{INT}+ : case get(str) of
-              true -> {token, {'chr', TokenLine, TokenChars}} ;
-              _    -> {token, {'digits', TokenLine, TokenChars}}
-         end.
+\[ : {token, {'b-a', TokenLine, '['}}.
+\] : {token, {'e-a', TokenLine, ']'}}.
+\{ : {token, {'b-o', TokenLine, '{'}}.
+\} : {token, {'e-o', TokenLine, '}'}}.
+\: : {token, {'n-s', TokenLine, ':'}}.
+\, : {token, {'v-s', TokenLine, ','}}.
+false  : {token, {'false', TokenLine}}.
+null   : {token, {'null', TokenLine}}.
+true   : {token, {'true', TokenLine}}.
+\-     : {token, {minus, TokenLine, '-'}}.
+\+     : {token, {plus , TokenLine, '+'}}.
+\.     : {token, {'d-p', TokenLine, '.'}}.
+{EXP} : {token, {exponent, TokenLine, TokenChars}}.
+
+{INT}+ : {token, {'digits', TokenLine, TokenChars}}.
 
 
 {WS}+   : skip_token.
 
-"[^"\\]*(\\.[^"\\]*)*"  : {token,{'chr', TokenLine, parse_string(strip(TokenChars, TokenLen))}}.
+"[^"\\]*(\\.[^"\\]*)*"  : {token,{'chr', TokenLine, unicode:characters_to_binary(parse_string(strip(TokenChars, TokenLen)))}}.
 
 
-{CHAR} : {token, {'chr', TokenLine, TokenChars}}.
+{CHAR} : {token, {'chr', TokenLine, unicode:characters_to_binary(TokenChars)}}.
 
 Erlang code.
 
