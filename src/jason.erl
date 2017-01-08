@@ -5,7 +5,6 @@
 -export([encode/2, decode/2]).
 -export([decode_file/1]).
 
-
 encode(_Term) -> ok.
 encode(_Term, _) -> ok.
 
@@ -16,7 +15,8 @@ decode(Json, _Opt) when is_binary(Json) -> decode(binary_to_list(Json));
 decode(Json, _Opt) when is_list(Json)   -> 
       try
          {ok, X, _} = jason_lex:string(Json), %io:format("~p~n",[X]),
-         {ok, Res}  = jason_yec:parse(X),
+         %{ok, Res}  = jason_yec:parse(X),
+         {ok, Res}  = jason_yecrec:parse(X),
          Res
       catch 
          throw:Term -> Term ;

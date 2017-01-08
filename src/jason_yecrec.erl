@@ -30,31 +30,53 @@ cast(V)                   -> V .
 
 create_module(H, T) -> 
       % Module declaration
-      M1 = io_lib:format("-module(~p).~n", [H]),
+      M1 = parse_forms(io_lib:format("-module(~p).", [H])),
       {Ks, _Ts} = lists:unzip(T),
+
       % Functions export
-      M2 = io_lib:format("-export([~p/0,~ts]).~n", 
-                        [H, 
-                         string:join(lists:flatmap(fun(K) -> [io_lib:format("~p/1,~p/2", [K,K])] end, Ks), ", ")]),
+      M2 = parse_forms(io_lib:format("-export([new/0, ~ts]).", 
+                        [string:join(lists:flatmap(fun(K) -> [io_lib:format("~p/1,~p/2", [K,K])] end, Ks), ", ")])),
+
       % Json types definition
-      M3 = io_lib:format("-type literal() :: null | true | false .~n",[]),
+      M3 = parse_forms(io_lib:format("-type literal() :: null | true | false .",[])),
+
       % Record definition
-      M4 = io_lib:format("-record(~p, {~ts}).~n", 
+      M40 = parse_forms(io_lib:format("-record(~p, {~ts}).", 
                         [H,
                          string:join(lists:flatmap(fun({K, V}) -> 
-                           [io_lib:format("~p :: ~p()", [K, V])] end, T), ", ")]),
+                           [io_lib:format("~p :: ~p()", [K, V])] end, T), ", ")])),
+
+      M41 = parse_forms(io_lib:format("-opaque ~p() :: #~p{}.", [H, H])),
+      M42 = parse_forms(io_lib:format("-export_type([~p/0]).", [H])),
+
       % Function definitions
-      M5 = io_lib:format("~ts~n",
-                        [lists:flatmap(fun({K, _}) -> 
-                           [io_lib:format("~n~p(#~p{~p = X}) -> X ;~n~p(R, V) when is_record(R, ~p) -> X#~p{~p = V}.", [K, H, K, K, H, K, K])] end, T)]),
-      _Code = io_lib:format("~ts~n", [lists:flatten(M1 ++ M2 ++ M3 ++ M4 ++ M5)]),
-      Binary = <<"">>, % TODO
+      M50 = parse_forms(io_lib:format("new() -> #~p{}.", [H])),
+
+      M51 = lists:flatmap(fun({K, _}) -> 
+                           [parse_forms(io_lib:format("~p(#~p{~p = X}) -> X.", [K, H, K])),
+                            parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p) -> R#~p{~p = V}.",
+                                                      [K, H, H, K]))] end, T),
+      % Compile forms
+      {ok, _, Binary} = compile:forms(lists:flatten([M1,M2,M3,M40,M41,M42,M50,M51])),
+
       % Load module
       case code:load_binary(H, atom_to_list(H), Binary) of
          {module, _}   -> put(jason_adhoc, lists:flatten(get(jason_adhoc) ++ [H])) ;
          {error, _What} -> ok
-      end
-      .
+      end.
+
+
+parse_forms(C) -> 
+         Code = lists:flatten(C),
+         case erl_scan:string(lists:flatten(Code)) of
+              {ok, S, _} ->  case erl_parse:parse_form(S) of
+                                 {ok, PF}    -> PF ;
+                                 {error, Ei} -> erlang:display({parse_error, Ei, io_lib:format("~ts",[Code])}), false
+                             end;
+              {error, EI, EL} -> erlang:display({scan_error, EI, EL, io_lib:format("~ts",[Code])}), false 
+         end.
+         
+
 
 
 -file("/usr/local/lib/erlang/lib/parsetools-2.1.4/include/yeccpre.hrl", 0).
@@ -231,7 +253,7 @@ yecctoken2string(Other) ->
 
 
 
--file("src/jason_yecrec.erl", 234).
+-file("src/jason_yecrec.erl", 256).
 
 -dialyzer({nowarn_function, yeccpars2/7}).
 yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
@@ -966,4 +988,4 @@ yeccpars2_52_(__Stack0) ->
   end | __Stack].
 
 
--file("src/jason_yecrec.yrl", 119).
+-file("src/jason_yecrec.yrl", 141).
