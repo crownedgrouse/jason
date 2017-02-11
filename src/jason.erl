@@ -31,8 +31,39 @@
 %%==============================================================================
 %% @doc 
 %% @end
-encode(_Term) -> ok.
-encode(_Term, _) -> ok.
+encode(Term) -> encode(Term, []).
+
+encode({L, R}, Opt) -> ok = io:format("~ts: ~ts", [encode(L, Opt, left), encode(R, Opt, right)]);
+encode(Term, Opt) -> ok = io:format("~ts", [encode(Term, Opt, left)]).
+
+encode({L, R}, Opt, left)  -> io_lib:format("~ts: ~ts", [encode(L, Opt, left), encode(R, Opt, right)]) ;
+encode({L, R}, Opt, right) -> io_lib:format("~ts: ~ts", [encode(L, Opt, left), encode(R, Opt, right)]) ;
+encode(Term, Opt, left) 
+		when is_tuple(Term)  -> % Record ?
+										Name = element(1, Term),
+										% Check if a definition was given in option
+										case check_rec_def(Name, Opt) of
+											  false -> throw({'unable_to_encode', Name}) ;
+											_  -> ok
+											  %Def   -> lists:foldl( fun() -> end, record2object(Term, Def))
+										end;
+encode(Term, _Opt, right)
+		when is_float(Term) -> io_lib:format("~ts", [float_to_list(Term, [{decimals, 4}, compact])]) ;
+encode(Term, _Opt, _)
+		when is_binary(Term) -> io_lib:format("\"~ts\"", [binary_to_list(Term)]) ;
+encode(Term, _Opt, _)
+		when is_atom(Term) -> io_lib:format("\"~ts\"", [atom_to_list(Term)]) ;
+encode(Term, Opt, left) 
+      when is_list(Term) -> case io_lib:printable_unicode_list(Term) of
+											 false -> io:format("[~n~ts~n]", [encode(Term, Opt, right)]) ;
+											 true  -> io:format("\"~ts\"", [Term]) 
+									  end;
+encode(Term, Opt, right) 
+		when is_list(Term) -> case io_lib:printable_unicode_list(Term) of
+											 false -> A = lists:foldl(fun(X, Acc) -> Acc ++ [encode(X, Opt, right)] end, [], Term),
+														 io_lib:format("{~n~ts~n}~n", [string:join(A, ",\n")]) ;
+											 true  -> io_lib:format("\"~ts\"", [Term]) 
+									  end.
 
 %%==============================================================================
 %% @doc 
@@ -82,7 +113,26 @@ decode_file(F, Opt) when is_list(F) ->
                          end
       end.
 
+%%==============================================================================
+%% @doc 
+%% @end
+%decode_stream(F) when is_pid(F) -> decode_stream(F, [{chunks, 2048]).
 
+%%==============================================================================
+%% @doc 
+%% @end
+%decode_stream(F, Opt) when is_pid(F) -> 
+
+check_rec_def(Name, Opt) -> case proplists:get_value(records, Opt) of
+											undefined -> false ;
+											Recs      -> Def  = proplists:get_value(Name, Recs),
+									 						 Def
+									 end.
+
+
+%record2object(Term, Def) 
+%	when is_tuple(Term) -> [_ | T] = erlang:tuple_to_list(Term),
+%								  lists:zip(Def, T).
 
 
  

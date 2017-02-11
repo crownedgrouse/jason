@@ -67,13 +67,13 @@ literal -> null  : null.
 
 Erlang code.
 
+
 %% MAPS %%
-mapify(Obj) when is_list(Obj) -> 
-          {_, M} = lists:mapfoldl(fun(X, Acc) -> case X of
-                                                   {K, V} -> {{K, V}, Acc#{list_to_atom(binary_to_list(K)) => mapify(V)}};
-                                                   Z      -> {Z, Acc}
-                                                  end
-                                  end , #{}, Obj),
+mapify([{_,_}|_T] = Obj) -> 
+          {_, M} = lists:mapfoldl(fun({K, V}, Acc) -> {{K, V}, Acc#{list_to_atom(binary_to_list(K)) => mapify(V)}} end , #{}, Obj),
+          M;
+mapify([_H|_T] = Obj) -> 
+          {_, M} = lists:mapfoldl(fun(Z, Acc) -> {Z, Acc ++ [mapify(Z)]} end , [], Obj),
           M;
 mapify({K, V}) when is_list(V) -> #{list_to_atom(binary_to_list(K)) => mapify(V)};
 mapify({K, V}) -> #{list_to_atom(binary_to_list(K)) => cast(V)};
@@ -166,10 +166,27 @@ parse_forms(C) ->
          end.
 
 %% PROPLIST %%
-proplistify(R) when is_list(R) -> lists:flatmap(fun({K, V}) -> [{list_to_atom(binary_to_list(K)), cast(V)}] end, R).
+proplistify([{K,V}]) 
+		when is_binary(K)      -> [{list_to_atom(binary_to_list(K)), proplistify(V)}];
+proplistify([{K,V}])         -> [{proplistify(K), proplistify(V)}];
+proplistify([{_,_}|_T] = R)  -> lists:flatmap(fun(Z) -> case Z of
+																					{K, V} when is_binary(K) -> [{list_to_atom(binary_to_list(K)), proplistify(V)}];
+																					{K, V} -> [{proplistify(K), proplistify(V)}];
+																					O      -> [cast(O)]
+																			 end end, R);
+proplistify([_H|_T] = R)     -> case io_lib:printable_unicode_list(R) of
+												 false -> lists:flatmap(fun(Z) -> [proplistify(Z)] end, R);
+											    true  -> cast(R)
+										  end;
+proplistify({K,V})           -> {list_to_atom(binary_to_list(K)), proplistify(V)};
+proplistify(R)               -> cast(R).
           
 %% General %%
 cast(V) when is_binary(V) -> erlang:binary_to_list(V) ;
+cast(V) when is_list(V)   -> case io_lib:printable_unicode_list(V) of
+												 false -> lists:flatmap(fun(Z) -> [cast(Z)] end, V);
+											    true  -> V
+									  end;
 cast(V)                   -> V . 
 
  
