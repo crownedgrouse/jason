@@ -80,6 +80,12 @@ decode(Json, Opt) when is_list(Json)   ->
          {ok, X, _} = jason_lex:string(Json), 
          Mode = proplists:get_value(mode, Opt),
          put(jason_mode, Mode),
+			To = proplists:get_value(to, Opt),
+			case valid_to_file(To) of
+				 true        -> put(jason_to, To) ;
+				 false       -> throw({error, "Invalid 'to' record definition dump file : cannot create"});
+				 notempty    -> throw({error, "Invalid 'to' record definition dump file : not empty"}) 
+			end,
          {ok, R}  = jason_yec:parse(X), 
          R
       catch 
@@ -91,6 +97,13 @@ decode(Json, Opt) when is_list(Json)   ->
                                     {error, Line, lists:flatten(io_lib:format("syntax error before: ~ts", [What]))} ;
                               _ ->  {error, Reason }
                          end
+		after
+			erase(jason_mode),
+			case get(jason_to) of
+				undefined -> ok ;
+				_         -> erase(jason_adhoc)
+			end,
+			erase(jason_to)
       end.
 
 %%==============================================================================
@@ -134,6 +147,17 @@ check_rec_def(Name, Opt) -> case proplists:get_value(records, Opt) of
 %	when is_tuple(Term) -> [_ | T] = erlang:tuple_to_list(Term),
 %								  lists:zip(Def, T).
 
-
+valid_to_file(To) -> case filelib:is_file(To) of
+								  false -> case filelib:is_dir(filename:dirname(To)) of
+													  true  -> true ;
+													  false -> false
+											  end;
+								  true  -> case filelib:is_regular(To) of
+												  true -> case filelib:file_size(To) of
+																	0 -> true ;
+																   _ -> notempty
+															 end
+											  end								  
+						   end .
  
 

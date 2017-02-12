@@ -107,41 +107,47 @@ detect_type(V) when is_tuple(V)   -> {record, element(1, V)}.
 
 create_module(H, T) -> 
       % Module declaration
-      M1 = parse_forms(io_lib:format("-module(~p).", [H])),
+      M1 = parse_forms(io_lib:format("-module(~p).~n", [H])),
       {Ks, _Ts} = lists:unzip(T),
 
       % Functions export
-      M2 = parse_forms(io_lib:format("-export([new/0, ~ts]).", 
+      M2 = parse_forms(io_lib:format("-export([new/0, fields/0, def/0, ~ts]).~n", 
                         [string:join(lists:flatmap(fun(K) -> [io_lib:format("~p/1,~p/2", [K,K])] end, Ks), ", ")])),
 
       % Json types definition
-      M3 = parse_forms(io_lib:format("-type literal() :: null | true | false .",[])),
+      M3 = parse_forms(io_lib:format("-type literal() :: null | true | false .~n",[])),
 
       % Record definition
-      M40 = parse_forms(io_lib:format("-record(~p, {~ts}).", 
-                        [H,
-                         string:join(lists:flatmap(fun({K, V}) -> 
-                           Def  =    case V of
+		DefT = string:join(lists:flatmap(fun({K, V}) -> 
+                           Def1  =    case V of
                                           {record, R} -> io_lib:format(" = ~p:new() ", [R]) ;
                                           integer -> " = 0 " ;
                                           float   -> " = 0.0 " ;
                                           list    -> " = [] " ;
                                           literal -> " = null "
                                      end,
-                           Type =    case V of
+                           Type1 =    case V of
                                           {record, A} -> "'" ++  atom_to_list(A) ++ "':'" ++ atom_to_list(A) ++ "'" ;
                                           V when is_atom(V) -> atom_to_list(V)
                                      end,
-                           [io_lib:format("~p ~s :: ~s()", [K, Def, Type])] 
-                                                   end, T), ", ")])),
+                           [io_lib:format("~p ~s :: ~s()", [K, Def1, Type1])] 
+                                                   end, T), ", "),	
+      Fields = string:join(lists:flatmap(fun({K, _}) -> 
+                           [io_lib:format("~p", [K])] 
+                                                   end, T), ", "),
+      M40 = parse_forms(io_lib:format("-record(~p, {~ts}).~n", [H, DefT])),
 
-      M41 = parse_forms(io_lib:format("-opaque ~p() :: #~p{}.", [H, H])),
-      M42 = parse_forms(io_lib:format("-export_type([~p/0]).", [H])),
+      M41 = parse_forms(io_lib:format("-opaque ~p() :: #~p{}.~n", [H, H])),
+      M42 = parse_forms(io_lib:format("-export_type([~p/0]).~n", [H])),
 
       % Function definitions
-      M50 = parse_forms(io_lib:format("new() -> #~p{}.", [H])),
+      M50 = parse_forms(io_lib:format("new() -> #~p{}.~n", [H])),
+      M51 = parse_forms(io_lib:format("fields() -> [~ts].~n", [Fields])),
 
-      M51 = lists:flatmap(fun({K, Type}) -> 
+		RecDef = io_lib:format("-record(~p, {~ts}).~n", [H, DefT]),
+      M52 = parse_forms(io_lib:format("def() -> \"-record(~p, {~ts}).\".~n", [H, DefT])),
+
+      M53 = lists:flatmap(fun({K, Type}) -> 
 									G = case Type of
                                           {record, R} -> io_lib:format(",is_tuple(V),(~p == element(1, V)) ", [R]) ;
                                           integer -> ",is_integer(V) " ;
@@ -149,11 +155,25 @@ create_module(H, T) ->
                                           list    -> ",is_list(V) " ;
                                           literal -> ",is_atom(V),(V == 'true' or V == 'false' or V == 'null') "
 										 end,
-                           [parse_forms(io_lib:format("~p(#~p{~p = X}) -> X.", [K, H, K])),
-                            parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p)~s -> R#~p{~p = V}.",
+                           [parse_forms(io_lib:format("~p(#~p{~p = X}) -> X.~n", [K, H, K])),
+                            parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p)~s -> R#~p{~p = V}.~n",
                                                       [K, H, G, H, K]))] end, T),
       % Compile forms
-      {ok, _, Binary} = compile:forms(lists:flatten([M1,M2,M3,M40,M41,M42,M50,M51])),
+      Binary = case compile:forms(lists:flatten([M1,M2,M3,M40,M41,M42,M50,M51,M52,M53])) of 
+						{ok, _, B} -> B ;
+						{ok, _, B, Warnings} -> io:format("Warning : ~p~n", [Warnings]), B ;
+						error -> io:format("Error while compiling : ~p~n", [H]), 
+									<<"">>;
+						{error,Errors,Warnings} -> io:format("Error   : ~p~n", [Errors]),
+															io:format("Warning : ~p~n", [Warnings]),	
+															<<"">> 
+					end,
+
+		% Dump record def if requested
+		case get(jason_to) of
+			  undefined -> ok ;
+			  File      -> append_file(File, RecDef)
+		end,
 
       % Load module
       case code:load_binary(H, atom_to_list(H), Binary) of
@@ -196,5 +216,12 @@ cast(V) when is_list(V)   -> case io_lib:printable_unicode_list(V) of
 									  end;
 cast(V)                   -> V . 
 
- 
+append_file(Filename, Bytes) ->
+    case file:open(Filename, [append]) of
+        {ok, IoDevice} ->
+            file:write(IoDevice, Bytes),
+            file:close(IoDevice);
+        {error, Reason} ->
+            io:format("~s open error  reason:~s~n", [Filename, Reason])
+    end.
 
