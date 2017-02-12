@@ -122,7 +122,7 @@ create_module(H, T) ->
                         [H,
                          string:join(lists:flatmap(fun({K, V}) -> 
                            Def  =    case V of
-                                          {record, _} -> "" ;
+                                          {record, R} -> io_lib:format(" = ~p:new() ", [R]) ;
                                           integer -> " = 0 " ;
                                           float   -> " = 0.0 " ;
                                           list    -> " = [] " ;
@@ -141,10 +141,17 @@ create_module(H, T) ->
       % Function definitions
       M50 = parse_forms(io_lib:format("new() -> #~p{}.", [H])),
 
-      M51 = lists:flatmap(fun({K, _}) -> 
+      M51 = lists:flatmap(fun({K, Type}) -> 
+									G = case Type of
+                                          {record, R} -> io_lib:format(",is_tuple(V),(~p == element(1, V)) ", [R]) ;
+                                          integer -> ",is_integer(V) " ;
+                                          float   -> ",is_float(V) " ;
+                                          list    -> ",is_list(V) " ;
+                                          literal -> ",is_atom(V),(V == 'true' or V == 'false' or V == 'null') "
+										 end,
                            [parse_forms(io_lib:format("~p(#~p{~p = X}) -> X.", [K, H, K])),
-                            parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p) -> R#~p{~p = V}.",
-                                                      [K, H, H, K]))] end, T),
+                            parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p)~s -> R#~p{~p = V}.",
+                                                      [K, H, G, H, K]))] end, T),
       % Compile forms
       {ok, _, Binary} = compile:forms(lists:flatten([M1,M2,M3,M40,M41,M42,M50,M51])),
 
