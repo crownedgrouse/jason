@@ -86,8 +86,8 @@ decode(Json, Opt) when is_list(Json)   ->
 				 false       -> throw({error, "Invalid 'to' record definition dump file : cannot create"});
 				 notempty    -> throw({error, "Invalid 'to' record definition dump file : not empty"}) 
 			end,
-         {ok, R}  = jason_yec:parse(X), 
-         R
+         {ok, R}  = jason_yec:parse(X),
+			{ok, R}
       catch 
          throw:Term -> Term ;
          error:Reason -> case Reason of
