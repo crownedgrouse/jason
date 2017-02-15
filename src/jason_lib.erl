@@ -67,9 +67,10 @@ create_module(H, T) ->
       % Module declaration
       M1 = parse_forms(io_lib:format("-module(~p).~n", [H])),
       {Ks, _Ts} = lists:unzip(T),
+      M10 = parse_forms(io_lib:format("-jason(argonaut).~n", [])),
 
       % Functions export
-      M2 = parse_forms(io_lib:format("-export([new/0, fields/0, def/0, ~ts]).~n", 
+      M2 = parse_forms(io_lib:format("-export([new/0, fields/0, size/0, def/0, ~ts]).~n", 
                         [string:join(lists:flatmap(fun(K) -> [io_lib:format("~p/1,~p/2", [K,K])] end, Ks), ", ")])),
 
       % Json types definition
@@ -90,9 +91,6 @@ create_module(H, T) ->
                                      end,
                            [io_lib:format("~p ~s :: ~s()", [K, Def1, Type1])] 
                                                    end, T), ", "),	
-      Fields = string:join(lists:flatmap(fun({K, _}) -> 
-                           [io_lib:format("~p", [K])] 
-                                                   end, T), ", "),
       M40 = parse_forms(io_lib:format("-record(~p, {~ts}).~n", [H, DefT])),
 
       M41 = parse_forms(io_lib:format("-opaque ~p() :: #~p{}.~n", [H, H])),
@@ -100,12 +98,13 @@ create_module(H, T) ->
 
       % Function definitions
       M50 = parse_forms(io_lib:format("new() -> #~p{}.~n", [H])),
-      M51 = parse_forms(io_lib:format("fields() -> [~ts].~n", [Fields])),
+      M51 = parse_forms(io_lib:format("fields() -> record_info(fields, ~p).~n", [H])),
+      M52 = parse_forms(io_lib:format("size()   -> record_info(size, ~p).~n", [H])),
 
 		RecDef = io_lib:format("-record(~p, {~ts}).~n", [H, DefT]),
-      M52 = parse_forms(io_lib:format("def() -> \"-record(~p, {~ts}).\".~n", [H, DefT])),
+      M53 = parse_forms(io_lib:format("def() -> \"-record(~p, {~ts}).\".~n", [H, DefT])),
 
-      M53 = lists:flatmap(fun({K, Type}) -> 
+      M54 = lists:flatmap(fun({K, Type}) -> 
 									G = case Type of
                                           {record, R} -> io_lib:format(",is_tuple(V),(~p == element(1, V)) ", [R]) ;
                                           integer -> ",is_integer(V) " ;
@@ -117,7 +116,7 @@ create_module(H, T) ->
                             parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p)~s -> R#~p{~p = V}.~n",
                                                       [K, H, G, H, K]))] end, T),
       % Compile forms
-      Binary = case compile:forms(lists:flatten([M1,M2,M3,M40,M41,M42,M50,M51,M52,M53])) of 
+      Binary = case compile:forms(lists:flatten([M1,M10,M2,M3,M40,M41,M42,M50,M51,M52,M53,M54])) of 
 						{ok, _, B} -> B ;
 						{ok, _, B, Warnings} -> io:format("Warning : ~p~n", [Warnings]), B ;
 						error -> io:format("Error while compiling : ~p~n", [H]), 
