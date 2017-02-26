@@ -28,8 +28,11 @@ null                      -> null                       -> null
 undefined                 -> null                       -> null
 true                      -> true                       -> true
 false                     -> false                      -> false
+<<"abc">> "abc" 'abc'     -> "abc"                      -> <<"abc">>  % (key/value) mode=struct (default)
+<<"abc">> "abc" 'abc'     -> "abc"                      -> 'abc'      % (key)   mode=proplist/map/record
+<<"abc">> "abc" 'abc'     -> "abc"                      -> "abc"      % (value) mode=proplist/map/record
 123                       -> 123                        -> 123
-123.4                     -> 123.4                      -> 123.4
+123.4                     -> 123.4                      -> 123.4      % Automatic precision
 [1,2,3]                   -> [1,2,3]                    -> [1,2,3]
 
 (WIP)
