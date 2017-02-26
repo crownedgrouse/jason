@@ -7,20 +7,33 @@ Work in progress...  Do not use for now.
 
 What makes `jason` different ?
 
-* decoding use Leex/Yecc parser
+* Decoding use Leex/Yecc parser
 * JSON object can be decoded in several formats :
    * binary struct
-   * record with automatic ad hoc module loaded for record handling
+   * proplists
+   * maps
+   * records with automatic ad hoc module loaded for record handling
+* No `parse_transform`
 
-## Automatic ad hoc record module ##
+`jason`'s bias is to be able to encode and decode records at runtime,
+without any code manipulation at compile time. 
+This make `jason` easy to use, with a minimal footprint in your own source code.
 
-The problem with JSON object translated to Erlang record, is the need to
-know the record structure before decoding.
+## Data types ##
+```
+Erlang                       JSON                          Erlang
+================================================================================
 
-`jason` solve this problem by creating and loading at runtime a module declaring
-and exporting record type, and functions to manage the record.
+null                      -> null                       -> null
+undefined                 -> null                       -> null
+true                      -> true                       -> true
+false                     -> false                      -> false
+123                       -> 123                        -> 123
+123.4                     -> 123.4                      -> 123.4
+[1,2,3]                   -> [1,2,3]                    -> [1,2,3]
 
-The module and the record are a same atom computed from a hash (phash/2) on
-record keys and value types.
+(WIP)
 
-### Exemple ###
+```
+
+

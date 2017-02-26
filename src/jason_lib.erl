@@ -166,7 +166,11 @@ proplistify({K,V})           -> {list_to_atom(binary_to_list(K)), proplistify(V)
 proplistify(R)               -> cast(R).
           
 %% General %%
-cast(V) when is_binary(V) -> erlang:binary_to_list(V) ;
+cast(V) when is_binary(V) -> X = erlang:binary_to_list(V),
+									  case io_lib:printable_unicode_list(X) of
+											 true  -> X;
+											 false -> V
+									  end;
 cast(V) when is_list(V)   -> case io_lib:printable_unicode_list(V) of
 												 false -> lists:flatmap(fun(Z) -> [cast(Z)] end, V);
 											    true  -> V

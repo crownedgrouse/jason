@@ -27,43 +27,98 @@
 -export([encode/1, decode/1]).
 -export([encode/2, decode/2]).
 -export([decode_file/1, decode_file/2]).
+-export([encode_file/2, encode_file/3]).
+
+-record(opt, {nl      = []    :: list()
+				 ,indent  = []    :: list()
+             ,records = []    :: list()
+				 }).
+
+%%==============================================================================
+%% @doc 
+%% @end
+encode_file(Term, Target) -> encode_file(Term, Target, []).
+
+encode_file(Term, Target, Opt) 
+	when is_list(Target) -> 
+				file:write_file(Target, encode(Term, Opt)).
 
 %%==============================================================================
 %% @doc 
 %% @end
 encode(Term) -> encode(Term, []).
 
-encode({L, R}, Opt) -> ok = io:format("~ts: ~ts", [encode(L, Opt, left), encode(R, Opt, right)]);
-encode(Term, Opt) -> ok = io:format("~ts", [encode(Term, Opt, left)]).
+encode(Term, O) -> Opt = options(O),
+						 lists:flatten(encode(Term, Opt, left, 0)).
 
-encode({L, R}, Opt, left)  -> io_lib:format("~ts: ~ts", [encode(L, Opt, left), encode(R, Opt, right)]) ;
-encode({L, R}, Opt, right) -> io_lib:format("~ts: ~ts", [encode(L, Opt, left), encode(R, Opt, right)]) ;
-encode(Term, Opt, left) 
-		when is_tuple(Term)  -> % Record ?
-										Name = element(1, Term),
-										% Check if a definition was given in option
-										case check_rec_def(Name, Opt) of
-											  false -> throw({'unable_to_encode', Name}) ;
-											_  -> ok
-											  %Def   -> lists:foldl( fun() -> end, record2object(Term, Def))
-										end;
-encode(Term, _Opt, right)
+encode({L, R}, Opt, left, Depth) -> 
+			 case check_rec_def(L, Opt#opt.records) of
+				  		false -> io_lib:format("~ts~ts: ~ts", 
+													 [indent(Opt#opt.indent, Depth), 
+								                 encode(L, Opt, left, Depth), 
+								                 encode(R, Opt, right, (Depth + 1))]);
+						_  -> io_lib:format("~ts~ts", 
+								             [indent(Opt#opt.indent, Depth), 
+								              encode(R, Opt, right, (Depth + 1))])
+			 end;
+encode({L, R}, Opt, right, Depth) -> 
+			 case check_rec_def(L, Opt#opt.records) of
+		  		false -> io_lib:format("~ts: ~ts", 
+				                      [encode(L, Opt, left,  Depth), 
+				                       encode(R, Opt, right, Depth)]);
+				_  -> io_lib:format("~ts", 
+				                   [encode(R, Opt, right, Depth)])
+			 end;
+encode(Term, Opt, _, Depth) 
+		when is_tuple(Term)  -> 
+			Offset = indent(Opt#opt.indent, (Depth - 1)),
+			% Record ?
+			Name = element(1, Term),
+			% Check if a definition was given in option
+			case check_rec_def(Name, Opt#opt.records) of
+				  false -> throw({'unable_to_encode', Name}) ;
+				  Def   -> X = lists:foldl( fun({A,B}, Acc) -> 
+														Acc ++ [io_lib:format("~ts\"~ts\": ~ts", 
+																					[Offset, 
+		                                                          A, 
+		                                                          encode(B, Opt,right, (Depth + 1))])] 
+		                                  end, [], record2object(Term, Def)),
+							  io_lib:format("~ts~ts{~ts~ts~ts~ts}", 
+												[ case Depth of 1 -> "" ; _ -> cr(Opt#opt.nl) end, 
+												  Offset, 
+												  cr(Opt#opt.nl), 
+												  string:join(X, "," ++cr(Opt#opt.nl)), 
+												  cr(Opt#opt.nl), 
+												  Offset]) 	  
+			end;
+encode(Term, _Opt, _, _Depth)
+		when is_integer(Term) -> io_lib:format("~p", [Term]) ;
+encode(Term, _Opt, _, _Depth)
 		when is_float(Term) -> io_lib:format("~ts", [float_to_list(Term, [{decimals, 4}, compact])]) ;
-encode(Term, _Opt, _)
+encode(Term, _Opt, _, _Depth)
 		when is_binary(Term) -> io_lib:format("\"~ts\"", [binary_to_list(Term)]) ;
-encode(Term, _Opt, _)
+encode(null, _Opt, _, _Depth)      -> io_lib:format("null", []) ;
+encode(undefined, _Opt, _, _Depth) -> io_lib:format("null", []) ;
+encode(true, _Opt, _, _Depth)      -> io_lib:format("true", []) ;
+encode(false, _Opt, _, _Depth)     -> io_lib:format("false", []) ;
+encode(Term, _Opt, _, _Depth)
 		when is_atom(Term) -> io_lib:format("\"~ts\"", [atom_to_list(Term)]) ;
-encode(Term, Opt, left) 
-      when is_list(Term) -> case io_lib:printable_unicode_list(Term) of
-											 false -> io:format("[~n~ts~n]", [encode(Term, Opt, right)]) ;
-											 true  -> io:format("\"~ts\"", [Term]) 
-									  end;
-encode(Term, Opt, right) 
-		when is_list(Term) -> case io_lib:printable_unicode_list(Term) of
-											 false -> A = lists:foldl(fun(X, Acc) -> Acc ++ [encode(X, Opt, right)] end, [], Term),
-														 io_lib:format("{~n~ts~n}~n", [string:join(A, ",\n")]) ;
+encode(Term, Opt, _, Depth) 
+		when is_list(Term) -> Offset = indent(Opt#opt.indent, (Depth - 1)),
+									 case io_lib:printable_unicode_list(Term) of
+											 false -> A = lists:foldl(fun(X, Acc) -> 
+																				Acc ++ [Offset ++ encode(X, Opt, right, Depth + 1)] 
+																			  end, [], Term),
+														 io_lib:format("~ts~ts[~ts~ts~ts~ts]", 
+																			[ case Depth of 1 -> "" ; _ -> cr(Opt#opt.nl) end, 
+																			  Offset,
+																			  cr(Opt#opt.nl),
+																			  string:join(A, ","++cr(Opt#opt.nl)), 
+																			  cr(Opt#opt.nl), 
+																			  Offset]) ;
 											 true  -> io_lib:format("\"~ts\"", [Term]) 
 									  end.
+
 
 %%==============================================================================
 %% @doc 
@@ -136,16 +191,18 @@ decode_file(F, Opt) when is_list(F) ->
 %% @end
 %decode_stream(F, Opt) when is_pid(F) -> 
 
-check_rec_def(Name, Opt) -> case proplists:get_value(records, Opt) of
-											undefined -> false ;
-											Recs      -> Def  = proplists:get_value(Name, Recs),
-									 						 Def
+check_rec_def(Name, Opt) -> case Opt of
+											[]    -> false ;
+											Recs  -> case proplists:get_value(Name, Recs) of
+																	undefined -> false ;
+																	Res       -> Res
+													   end
 									 end.
 
 
-%record2object(Term, Def) 
-%	when is_tuple(Term) -> [_ | T] = erlang:tuple_to_list(Term),
-%								  lists:zip(Def, T).
+record2object(Term, Def) 
+	when is_tuple(Term) -> [_ | T] = erlang:tuple_to_list(Term),
+								  lists:zip(Def, T).
 
 valid_to_file(To) -> case filelib:is_file(To) of
 								  false -> case filelib:is_dir(filename:dirname(To)) of
@@ -159,5 +216,30 @@ valid_to_file(To) -> case filelib:is_file(To) of
 															 end
 											  end								  
 						   end .
+
+indent(I, Depth) when is_list(I),(Depth >= 0) -> string:copies(I, Depth);
+indent(I, _ ) when is_list(I) -> "";
+indent(_, _) -> "".
+
+cr(Nl) when is_list(Nl) -> Nl ;
+cr(_) -> "" .
  
+options(O) -> I = case proplists:get_value(indent, O) of
+							  undefined -> "" ;
+							  false -> "" ;
+							  true  -> "   "
+						end, 
+				  N = case proplists:get_value(indent, O) of
+							  undefined -> "" ;
+							  false -> "" ;
+							  true  -> "\n"
+						end,
+				  R = case proplists:get_value(records, O) of
+							  undefined -> [] ;
+							  X         -> X
+						end,
+				  #opt{nl = N
+						,indent = I
+						,records = R
+						}. 
 
