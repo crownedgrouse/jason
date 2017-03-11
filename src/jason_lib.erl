@@ -110,7 +110,7 @@ create_module(H, T) ->
                                           integer -> ",is_integer(V) " ;
                                           float   -> ",is_float(V) " ;
                                           list    -> ",is_list(V) " ;
-                                          literal -> ",is_atom(V),(V == 'true' or V == 'false' or V == 'null') "
+                                          literal -> ",is_atom(V),((V == 'true') or (V == 'false') or (V == 'null')) "
 										 end,
                            [parse_forms(io_lib:format("~p(#~p{~p = X}) -> X.~n", [K, H, K])),
                             parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p)~s -> R#~p{~p = V}.~n",
