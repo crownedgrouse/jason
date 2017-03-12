@@ -28,13 +28,21 @@
 -export([encode/2, decode/2]).
 -export([decode_file/1, decode_file/2]).
 -export([encode_file/2, encode_file/3]).
+-export([pp/1, pp/2]).
 
 -record(opt, {nl      = []     :: list()
-				 ,indent  = []     :: list()
-             ,compact = false  :: boolean()
+				 ,indent  = false  
              ,records = []     :: list()
              ,mode    = struct :: atom()
 				 }).
+
+%%==============================================================================
+%% @doc 
+%% @end
+
+pp(C) -> pp(C, 'gnu').
+
+pp(C, Style) -> jason_pp:indent(C, Style).
 
 %%==============================================================================
 %% @doc 
@@ -51,20 +59,22 @@ encode_file(Term, Target, Opt)
 encode(Term) -> encode(Term, []).
 
 encode(Term, O) -> Opt = options(O),
-						 lists:flatten(encode(Term, Opt, left, 0)).
+						 Compact = lists:flatten(encode(Term, Opt, left, 0)),
+						 case Opt#opt.indent of
+								false -> Compact ;
+								I     -> pp(Compact, I)
+						 end.
 
 encode(Term, Opt, Side, Depth)
 		when is_map(Term) ->  encode(maps:to_list(Term), Opt, Side, Depth) ;
 encode({L, R}, Opt, left, Depth) 
 			 when is_atom(L) ->
 			 case check_rec_def(L, Opt#opt.records) of
-				  		false -> io_lib:format("~ts~ts: ~ts", 
-													 [indent(Opt#opt.indent, Depth), 
-								                 encode(L, Opt, left, Depth), 
+				  		false -> io_lib:format("~ts: ~ts", 
+													 [encode(L, Opt, left, Depth), 
 								                 encode(R, Opt, right, (Depth + 1))]);
-						_  -> io_lib:format("~ts~ts", 
-								             [indent(Opt#opt.indent, Depth), 
-								              encode(R, Opt, right, (Depth + 1))])
+						_  -> io_lib:format("~ts", 
+								             [encode(R, Opt, right, (Depth + 1))])
 			 end;
 encode({L, R}, Opt, right, Depth) 
 			 when is_atom(L) ->
@@ -78,44 +88,27 @@ encode({L, R}, Opt, right, Depth)
 encode(Term, Opt, _, Depth) 
 		when is_tuple(Term),
            (Opt#opt.mode =:= 'record')  -> 
-			Offset = indent(Opt#opt.indent, (Depth - 1)),
 			% Record ?
 			Name = element(1, Term),
 			% Check if a definition was given in option
 			case check_rec_def(Name, Opt#opt.records) of
 				  false -> throw({'unable_to_encode', Name}) ;
 				  Def   -> X = lists:foldl( fun({A,B}, Acc) -> 
-														Acc ++ [io_lib:format("~ts\"~ts\": ~ts", 
-																					[Offset, 
-		                                                          A, 
-		                                                          encode(B, Opt,right, (Depth + 1))])] 
+														Acc ++ [io_lib:format("\"~ts\": ~ts", 
+																					[A, encode(B, Opt,right, (Depth + 1))])] 
 		                                  end, [], record2object(Term, Def)),
-							  io_lib:format("~ts~ts{~ts~ts~ts~ts}", 
-												[ case Depth of 1 -> "" ; _ -> cr(Opt#opt.nl) end, 
-												  Offset, 
-												  cr(Opt#opt.nl), 
-												  string:join(X, "," ++ cr(Opt#opt.nl)), 
-												  cr(Opt#opt.nl), 
-												  Offset]) 	  
+							  io_lib:format("{~ts}", 
+												[ string:join(X, ",")]) 	  
 			end;
 encode([{_, _}| _] = Term, Opt, _, Depth) 
 		when is_list(Term),
            ((Opt#opt.mode =:= proplist) or
            (Opt#opt.mode =:= map))  -> 
-								Offset = indent(Opt#opt.indent, Depth),
 								X = lists:foldl( fun({A,B}, Acc) -> 
-														Acc ++ [io_lib:format("~ts\"~ts\": ~ts", 
-																					[case Opt#opt.compact of true -> " " ; _ -> Offset end, 
-		                                                          A, 
-		                                                          encode(B, Opt,right, (Depth + 1))])] 
+														Acc ++ [io_lib:format("\"~ts\": ~ts", 
+																					[A, encode(B, Opt,right, (Depth + 1))])] 
 		                                  end, [], Term),
-								io_lib:format("~ts~ts{~ts~ts~ts~ts}", 
-												[ case Depth of 0 -> "" ; _ -> cr(Opt#opt.nl) end, 
-												  Offset, 
-												  case Opt#opt.compact of true -> "" ; _ -> cr(Opt#opt.nl) end, 
-												  string:join(X, "," ++ case Opt#opt.compact of true -> "" ; _ -> cr(Opt#opt.nl) end ) , 
-												  case Opt#opt.compact of true -> "" ; _ -> cr(Opt#opt.nl) end, 
-												  case Opt#opt.compact of true -> " " ; _ -> Offset end]) 
+								io_lib:format("{~ts}", [string:join(X, ",")]) 
 			;
 encode(Term, Opt, _, _Depth) 
 		when is_tuple(Term),
@@ -135,21 +128,12 @@ encode(false, _Opt, _, _Depth)     -> io_lib:format("false", []) ;
 encode(Term, _Opt, _, _Depth)
 		when is_atom(Term) -> io_lib:format("\"~ts\"", [atom_to_list(Term)]) ;
 encode(Term, Opt, _, Depth) 
-		when is_list(Term) -> Offset = case Opt#opt.mode of
-													 proplist -> indent(Opt#opt.indent, Depth) ;
-													 _        -> indent(Opt#opt.indent, (Depth - 1))
-												 end,
-									 case io_lib:printable_unicode_list(Term) of
+		when is_list(Term) -> case io_lib:printable_unicode_list(Term) of
 											 false -> A = lists:foldl(fun(X, Acc) -> 
-																				Acc ++ [Offset ++ encode(X, Opt, right, Depth + 1)] 
+																				Acc ++ [encode(X, Opt, right, (Depth + 1))] 
 																			  end, [], Term),
-														 io_lib:format("~ts~ts[~ts~ts~ts~ts]", 
-																			[ case Depth of 1 -> "" ; _ -> cr(Opt#opt.nl) end, 
-																			  Offset,
-																			  case Opt#opt.mode of proplist -> "" ; _ -> cr(Opt#opt.nl) end,
-																			  string:join(A, ","++ case Opt#opt.mode of proplist -> "" ; _ -> cr(Opt#opt.nl) end ) , 
-																			  cr(Opt#opt.nl), 
-																			  Offset]) ;
+														 io_lib:format("[~ts]", 
+																			[ string:join(A, ",")]) ;
 											 true  -> io_lib:format("\"~ts\"", [Term]) 
 									  end.
 
@@ -251,12 +235,12 @@ valid_to_file(To) -> case filelib:is_file(To) of
 											  end								  
 						   end .
 
-indent(I, Depth) when is_list(I),(Depth >= 0) -> string:copies(I, Depth);
-indent(I, _ ) when is_list(I) -> "";
-indent(_, _) -> "".
+%indent(I, Depth) when is_list(I),(Depth >= 0) -> string:copies(I, Depth);
+%indent(I, _ ) when is_list(I) -> "";
+%indent(_, _) -> "".
 
-cr(Nl) when is_list(Nl) -> Nl ;
-cr(_) -> "" .
+%cr(Nl) when is_list(Nl) -> Nl ;
+%cr(_) -> "" .
  
 options(O) -> I = case proplists:get_value(indent, O) of
 							  undefined -> "" ;
@@ -267,12 +251,6 @@ options(O) -> I = case proplists:get_value(indent, O) of
 							  undefined -> "" ;
 							  false -> "" ;
 							  true  -> "\n"
-						end,
-				  C = case proplists:get_value(compact, O) of
-							  undefined -> false ;
-							  false -> false ;
-							  true  -> true ;
-							  _     -> false
 						end,
 				  R = case proplists:get_value(records, O) of
 							  undefined -> [] ;
@@ -286,7 +264,6 @@ options(O) -> I = case proplists:get_value(indent, O) of
 						end,
 				  #opt{nl = N
 						,indent = I
-                  ,compact = C
 						,records = R
                   ,mode = M
 						}. 
