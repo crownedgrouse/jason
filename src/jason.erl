@@ -98,14 +98,10 @@ encode(Term, Opt, _, Depth)
 												  cr(Opt#opt.nl), 
 												  Offset]) 	  
 			end;
-encode(Term, Opt, _, _Depth) 
-		when is_tuple(Term),
-           (Opt#opt.mode =:= map)  -> 
-"todo"
-			;
 encode([{_, _}| _] = Term, Opt, _, Depth) 
 		when is_list(Term),
-           (Opt#opt.mode =:= proplist)  -> 
+           ((Opt#opt.mode =:= proplist) or
+           (Opt#opt.mode =:= map))  -> 
 								Offset = indent(Opt#opt.indent, Depth),
 								X = lists:foldl( fun({A,B}, Acc) -> 
 														Acc ++ [io_lib:format("~ts\"~ts\": ~ts", 
