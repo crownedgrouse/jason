@@ -32,6 +32,7 @@ jason_decode_numbers_test() ->
      %% Numbers: Floats
      % float: decimal notation",
      ?assertEqual({ok, 1.23}, jason:decode(<<"1.23">>)),
+     ?assertEqual({ok, 1.23456789}, jason:decode(<<"1.23456789">>)),
      % float: exponential notation",
      ?assertEqual({ok, 12.345}, jason:decode(<<"12345e-3">>)), % lower case 'e'
      ?assertEqual({ok, 12.345}, jason:decode(<<"12345E-3">>)), % upper case 'E'

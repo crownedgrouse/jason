@@ -32,6 +32,7 @@ true   : {token, {'true', TokenLine}}.
 {CHAR} : {token, {'chr', TokenLine, unicode:characters_to_binary(TokenChars)}}.
 
 Erlang code.
+-dialyzer([{nowarn_function, [yyrev/2]}]).
 
 strip(TokenChars,TokenLen) -> lists:sublist(TokenChars, 2, TokenLen - 2).
 

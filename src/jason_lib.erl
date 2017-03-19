@@ -27,6 +27,11 @@
 -export([mapify/1, recordify/1, proplistify/1]).
 
 %% MAPS %%
+%%==============================================================================
+%% @doc Translate to map 
+%% @end
+-spec mapify(any()) -> any().
+
 mapify([{_,_}|_T] = Obj) -> 
           {_, M} = lists:mapfoldl(fun({K, V}, Acc) -> {{K, V}, Acc#{list_to_atom(binary_to_list(K)) => mapify(V)}} end , #{}, Obj),
           M;
@@ -38,7 +43,14 @@ mapify({K, V}) -> #{list_to_atom(binary_to_list(K)) => cast(V)};
 mapify(X) -> cast(X).
 
 %% RECORDS %%
-recordify(Obj) -> % Replace binary keys by atom key, and detect values types
+%%==============================================================================
+%% @doc Translate to record
+%% @end
+-spec recordify(list()) -> tuple().
+
+recordify(Obj) 
+	when is_list(Obj) 
+	-> % Replace binary keys by atom key, and detect values types
                   R = lists:flatmap(fun({K, V}) -> [{list_to_atom(binary_to_list(K)), cast(V)}] end, Obj),
                   T = lists:flatmap(fun({K, V}) -> [{K, detect_type(V)}] end, R),
                   % Hash Erlang term for ad hoc record name
@@ -56,12 +68,21 @@ recordify(Obj) -> % Replace binary keys by atom key, and detect values types
                   V = lists:flatmap(fun({_, Z}) -> [Z] end, R),
                   erlang:list_to_tuple([H] ++ V).
 
+%%==============================================================================
+%% @doc Detect type of data
+%% @end
+-spec detect_type(any()) -> atom() | tuple().
+
 detect_type(V) when is_atom(V)    -> literal ;
 detect_type(V) when is_float(V)   -> float ;
 detect_type(V) when is_integer(V) -> integer ;
 detect_type(V) when is_list(V)    -> list;
 detect_type(V) when is_tuple(V)   -> {record, element(1, V)}.
 
+%%==============================================================================
+%% @doc Create argonaut module for record handling
+%% @end
+-spec create_module(atom(), list()) -> atom().
 
 create_module(H, T) -> 
       % Module declaration
@@ -127,10 +148,11 @@ create_module(H, T) ->
 					end,
 
 		% Dump record def if requested
-		case get(jason_to) of
-			  undefined -> ok ;
-			  File      -> append_file(File, RecDef)
-		end,
+		_ = case get(jason_to) of
+			  	undefined -> ok ;
+			  	File when is_list(File)     -> append_file(File, RecDef);
+			  	_ -> ok
+			 end,
 
       % Load module
       case code:load_binary(H, atom_to_list(H), Binary) of
@@ -138,6 +160,10 @@ create_module(H, T) ->
          {error, _What} -> ok
       end.
 
+%%==============================================================================
+%% @doc Parse forms
+%% @end
+-spec parse_forms(list()) -> atom() | list().
 
 parse_forms(C) -> 
          Code = lists:flatten(C),
@@ -150,6 +176,11 @@ parse_forms(C) ->
          end.
 
 %% PROPLIST %%
+%%==============================================================================
+%% @doc Translate to proplist
+%% @end
+-spec proplistify(any()) -> any().
+
 proplistify([{K,V}]) 
 		when is_binary(K)      -> [{list_to_atom(binary_to_list(K)), proplistify(V)}];
 proplistify([{K,V}])         -> [{proplistify(K), proplistify(V)}];
@@ -166,6 +197,11 @@ proplistify({K,V})           -> {list_to_atom(binary_to_list(K)), proplistify(V)
 proplistify(R)               -> cast(R).
           
 %% General %%
+%%==============================================================================
+%% @doc Cast data (list if printable, otherwise binary)
+%% @end
+-spec cast(any()) -> any().
+
 cast(V) when is_binary(V) -> X = erlang:binary_to_list(V),
 									  case io_lib:printable_unicode_list(X) of
 											 true  -> X;
@@ -177,10 +213,16 @@ cast(V) when is_list(V)   -> case io_lib:printable_unicode_list(V) of
 									  end;
 cast(V)                   -> V . 
 
-append_file(Filename, Bytes) ->
+%%==============================================================================
+%% @doc Append data to file
+%% @end
+-spec append_file(list(), any()) -> atom().
+
+append_file(Filename, Bytes) 
+    when is_list(Filename) ->
     case file:open(Filename, [append]) of
         {ok, IoDevice} ->
-            file:write(IoDevice, Bytes),
+            ok = file:write(IoDevice, Bytes),
             file:close(IoDevice);
         {error, Reason} ->
             io:format("~s open error  reason:~s~n", [Filename, Reason])
