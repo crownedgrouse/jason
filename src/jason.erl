@@ -137,10 +137,15 @@ encode([{_, _}| _] = Term, Opt, _, Depth)
 								io_lib:format("{~ts}", [string:join(X, ",")]) 
 			;
 encode(Term, Opt, Side, Depth) 
-		when is_tuple(Term) -> case element(1, Term) of
-											X when is_atom(X) -> encode(Term, Opt#opt{mode='record'}, Side, Depth);
-											_ -> encode([Term], Opt, Side, Depth)
-									  end;
+		when is_tuple(Term),
+           (tuple_size(Term) > 1) 
+										-> case element(1, Term) of
+												X when is_atom(X) -> encode(Term, Opt#opt{mode='record'}, Side, Depth);
+												_ -> encode([Term], Opt, Side, Depth)
+									  		end;
+encode({}, _Opt, _Side, _Depth) -> "{}" ;
+encode(Term, _Opt, _Side, _Depth) 
+		when is_tuple(Term)     -> throw(invalid_term) ;
 
 % INTEGER
 encode(Term, _Opt, _, _Depth)
