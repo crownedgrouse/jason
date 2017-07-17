@@ -21,7 +21,7 @@ This make `jason` easy to use, with a minimal footprint in your own source code.
 you ad-hoc modules to handle records. Even with deeply nested JSON objects.
 
 `jason` allow you to use [JSON to records](https://github.com/crownedgrouse/jason/wiki/Records) translation even if the JSON source is not
-stable and JSON object can change without any warning. This is particulary interesting when JSON source is coming from tiers.
+stable and JSON object can change without any warning. This is particulary interesting when JSON source is coming from third party.
 
 Float are converted with automatic precision without need to set a precision depth.
 
