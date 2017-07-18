@@ -79,6 +79,7 @@ encode(Term) -> encode(Term, []).
 
 encode(Term, O) -> Opt = options(O),
 						 %erlang:display(Opt),
+						 %Compact = io_lib:format("~ts",[lists:flatten(encode(Term, Opt, left, 0))]),
 						 Compact = lists:flatten(encode(Term, Opt, left, 0)),
 						 case Opt#opt.indent of
 								""     -> Compact ;
@@ -90,39 +91,31 @@ encode(Term, Opt, Side, Depth)
 		when is_map(Term) ->  encode(maps:to_list(Term), Opt#opt{mode = map}, Side, Depth) ;
 % TUPLE left
 encode({L, R}, Opt, left, Depth) 
-			 when is_atom(L) ->
-			 case check_rec_def(L, Opt#opt.records) of
-				  		false -> io_lib:format("{~ts: ~ts}", 
-													 [encode(L, Opt, left, Depth), 
-								                 encode(R, Opt, right, (Depth + 1))]);
-						_  -> io_lib:format("~ts", 
-								             [encode(R, Opt, right, (Depth + 1))])
-			 end;
+			  when is_atom(L),
+(Opt#opt.mode =/= 'record')   
+			-> "{" ++ encode(L, Opt, left, Depth) ++ ": " ++ encode(R, Opt, right, (Depth + 1)) ++ "}";
 % TUPLE right
 encode({L, R}, Opt, right, Depth) 
-			 when is_atom(L) ->
-			 case check_rec_def(L, Opt#opt.records) of
-		  		false -> io_lib:format("~ts: ~ts", 
-				                      [encode(L, Opt, left,  Depth), 
-				                       encode(R, Opt, right, Depth)]);
-				_  -> io_lib:format("~ts", 
-				                   [encode(R, Opt, right, Depth)])
-			 end;
+			  when is_atom(L),
+(Opt#opt.mode =/= 'record')  
+         -> "{" ++ encode(L, Opt, left,  Depth) ++ ": " ++ encode(R, Opt, right, Depth) ++ "}";
 % TUPLE
-encode(Term, Opt, _, Depth) 
+encode(Term, Opt, Side, Depth) 
 		when is_tuple(Term),
            (Opt#opt.mode =:= 'record')  -> 
 			% Record ?
 			Name = element(1, Term),
 			% Check if a definition was given in option
 			case check_rec_def(Name, Opt#opt.records) of
-				  false -> throw({'unable_to_encode', Name}) ;
+				  false -> % If 2 elements tuple, encode anyway as proplist
+							  case Term of
+									{_, _} -> encode(Term, Opt#opt{mode=proplist}, Side, Depth);
+									_      -> throw({'unable_to_encode', Name, Depth}) 
+							  end;
 				  Def   -> X = lists:foldl( fun({A,B}, Acc) -> 
-														Acc ++ [io_lib:format("\"~ts\": ~ts", 
-																					[A, encode(B, Opt,right, (Depth + 1))])] 
+														Acc ++ encode(A, Opt, left, Depth) ++ ": " ++ encode(B, Opt,right, (Depth + 1))
 		                                  end, [], record2object(Term, Def)),
-							  io_lib:format("{~ts}", 
-												[ string:join(X, ",")]) 	  
+							  "{" ++ string:join(X, ",") ++ "}"
 			end;
 % LIST
 encode([{_, _}| _] = Term, Opt, _, Depth) 
@@ -131,10 +124,9 @@ encode([{_, _}| _] = Term, Opt, _, Depth)
            (Opt#opt.mode =:= map) or
            (Opt#opt.mode =:= struct))  -> 
 								X = lists:foldl( fun({A,B}, Acc) -> 
-														Acc ++ [io_lib:format("\"~ts\": ~ts", 
-																					[A, encode(B, Opt,right, (Depth + 1))])] 
-		                                  end, [], Term),
-								io_lib:format("{~ts}", [string:join(X, ",")]) 
+														Acc ++ [encode(A, Opt, left, Depth) ++ ": " ++ encode(B, Opt,right, (Depth + 1))] 
+		                                   end, [], Term),
+								"{" ++ string:join(X, ",") ++ "}"
 			;
 encode(Term, Opt, Side, Depth) 
 		when is_tuple(Term),
@@ -144,8 +136,8 @@ encode(Term, Opt, Side, Depth)
 												_ -> encode([Term], Opt, Side, Depth)
 									  		end;
 encode({}, _Opt, _Side, _Depth) -> "{}" ;
-encode(Term, _Opt, _Side, _Depth) 
-		when is_tuple(Term)     -> throw(invalid_term) ;
+encode(Term, _Opt, _Side, Depth) 
+		when is_tuple(Term)     -> throw({'invalid_term', Term, Depth}) ;
 
 % INTEGER
 encode(Term, _Opt, _, _Depth)
@@ -153,26 +145,25 @@ encode(Term, _Opt, _, _Depth)
 % FLOAT
 encode(Term, _Opt, _, _Depth)
 		when is_float(Term) ->  Precision = get_precision(Term),
-										io_lib:format("~ts", [float_to_list(Term, [{decimals, Precision}, compact])]) ;
+										[float_to_list(Term, [{decimals, Precision}, compact])] ;
 % BINARY
 encode(Term, _Opt, _, _Depth)
-		when is_binary(Term) -> io_lib:format("\"~ts\"", [binary_to_list(Term)]) ;
+		when is_binary(Term) -> "\"" ++ binary_to_list(Term) ++ "\"";
 % ATOMS
 encode(null, _Opt, _, _Depth)      -> io_lib:format("null", []) ;
 encode(undefined, _Opt, _, _Depth) -> io_lib:format("null", []) ;
 encode(true, _Opt, _, _Depth)      -> io_lib:format("true", []) ;
 encode(false, _Opt, _, _Depth)     -> io_lib:format("false", []) ;
 encode(Term, _Opt, _, _Depth)
-		when is_atom(Term) -> io_lib:format("\"~ts\"", [atom_to_list(Term)]) ;
+		when is_atom(Term) -> "\"" ++ atom_to_list(Term) ++ "\"";
 % LIST
 encode(Term, Opt, _, Depth) 
 		when is_list(Term) -> case io_lib:printable_unicode_list(Term) of
 											 false -> A = lists:foldl(fun(X, Acc) -> 
 																				Acc ++ [encode(X, Opt, right, (Depth + 1))] 
 																			  end, [], Term),
-														 io_lib:format("[~ts]", 
-																			[ string:join(A, ",")]) ;
-											 true  -> io_lib:format("\"~ts\"", [Term]) 
+														 "[" ++ string:join(A, ",") ++ "]" ;
+											 true  -> "\"" ++ Term ++ "\""
 									  end.
 
 
