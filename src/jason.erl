@@ -78,13 +78,10 @@ encode(Term) -> encode(Term, []).
 -spec encode(any(), list()) -> list().
 
 encode(Term, O) -> Opt = options(O),
-						 %erlang:display(Opt),
-						 %Compact = io_lib:format("~ts",[lists:flatten(encode(Term, Opt, left, 0))]),
 						 Compact = lists:flatten(encode(Term, Opt, left, 0)),
 						 case Opt#opt.indent of
 								""     -> Compact ;
-								_I     -> Compact
-								%I     -> pp(Compact, I) % TODO
+								I      -> pp(Compact, I) % TODO
 						 end.
 % MAP
 encode(Term, Opt, Side, Depth)
