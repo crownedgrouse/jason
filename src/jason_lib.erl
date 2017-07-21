@@ -33,13 +33,13 @@
 -spec mapify(any()) -> any().
 
 mapify([{_,_}|_T] = Obj) -> 
-          {_, M} = lists:mapfoldl(fun({K, V}, Acc) -> {{K, V}, Acc#{list_to_atom(binary_to_list(K)) => mapify(V)}} end , #{}, Obj),
+          {_, M} = lists:mapfoldl(fun({K, V}, Acc) -> {{K, V}, Acc#{safe_list_to_atom(binary_to_list(K)) => mapify(V)}} end , #{}, Obj),
           M;
 mapify([_H|_T] = Obj) -> 
           {_, M} = lists:mapfoldl(fun(Z, Acc) -> {Z, Acc ++ [mapify(Z)]} end , [], Obj),
           M;
-mapify({K, V}) when is_list(V) -> #{list_to_atom(binary_to_list(K)) => mapify(V)};
-mapify({K, V}) -> #{list_to_atom(binary_to_list(K)) => cast(V)};
+mapify({K, V}) when is_list(V) -> #{safe_list_to_atom(binary_to_list(K)) => mapify(V)};
+mapify({K, V}) -> #{safe_list_to_atom(binary_to_list(K)) => cast(V)};
 mapify(X) -> cast(X).
 
 %% RECORDS %%
@@ -182,10 +182,10 @@ parse_forms(C) ->
 -spec proplistify(any()) -> any().
 
 proplistify([{K,V}]) 
-		when is_binary(K)      -> [{list_to_atom(binary_to_list(K)), proplistify(V)}];
+		when is_binary(K)      -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
 proplistify([{K,V}])         -> [{proplistify(K), proplistify(V)}];
 proplistify([{_,_}|_T] = R)  -> lists:flatmap(fun(Z) -> case Z of
-																					{K, V} when is_binary(K) -> [{list_to_atom(binary_to_list(K)), proplistify(V)}];
+																					{K, V} when is_binary(K) -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
 																					{K, V} -> [{proplistify(K), proplistify(V)}];
 																					O      -> [cast(O)]
 																			 end end, R);
@@ -193,7 +193,7 @@ proplistify([_H|_T] = R)     -> case io_lib:printable_unicode_list(R) of
 												 false -> lists:flatmap(fun(Z) -> [proplistify(Z)] end, R);
 											    true  -> cast(R)
 										  end;
-proplistify({K,V})           -> {list_to_atom(binary_to_list(K)), proplistify(V)};
+proplistify({K,V})           -> {safe_list_to_atom(binary_to_list(K)), proplistify(V)};
 proplistify(R)               -> cast(R).
           
 %% General %%
@@ -227,4 +227,14 @@ append_file(Filename, Bytes)
         {error, Reason} ->
             io:format("~s open error  reason:~s~n", [Filename, Reason])
     end.
+
+%%==============================================================================
+%% @doc Safe list to atom (check > 255 of UTF8)
+%% @end
+safe_list_to_atom(L) -> R = case catch list_to_atom(L) of
+											{'EXIT', _} -> list_to_binary(L);
+									      X -> X 
+									 end,
+								R.
+
 
