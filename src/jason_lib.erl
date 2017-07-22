@@ -49,8 +49,8 @@ mapify(X) -> cast(X).
 -spec recordify(list()) -> tuple().
 
 recordify(Obj) 
-	when is_list(Obj) 
-	-> % Replace binary keys by atom key, and detect values types
+   when is_list(Obj) 
+   -> % Replace binary keys by atom key, and detect values types
                   R = lists:flatmap(fun({K, V}) -> [{list_to_atom(binary_to_list(K)), cast(V)}] end, Obj),
                   T = lists:flatmap(fun({K, V}) -> [{K, detect_type(V)}] end, R),
                   % Hash Erlang term for ad hoc record name
@@ -98,7 +98,7 @@ create_module(H, T) ->
       M3 = parse_forms(io_lib:format("-type literal() :: null | true | false .~n",[])),
 
       % Record definition
-		DefT = string:join(lists:flatmap(fun({K, V}) -> 
+      DefT = string:join(lists:flatmap(fun({K, V}) -> 
                            Def1  =    case V of
                                           {record, R} -> io_lib:format(" = ~p:new() ", [R]) ;
                                           integer -> " = 0 " ;
@@ -111,7 +111,7 @@ create_module(H, T) ->
                                           V when is_atom(V) -> atom_to_list(V)
                                      end,
                            [io_lib:format("~p ~s :: ~s()", [K, Def1, Type1])] 
-                                                   end, T), ", "),	
+                                                   end, T), ", "),   
       M40 = parse_forms(io_lib:format("-record(~p, {~ts}).~n", [H, DefT])),
 
       M41 = parse_forms(io_lib:format("-opaque ~p() :: #~p{}.~n", [H, H])),
@@ -122,37 +122,37 @@ create_module(H, T) ->
       M51 = parse_forms(io_lib:format("fields() -> record_info(fields, ~p).~n", [H])),
       M52 = parse_forms(io_lib:format("size()   -> record_info(size, ~p).~n", [H])),
 
-		RecDef = io_lib:format("-record(~p, {~ts}).~n", [H, DefT]),
+      RecDef = io_lib:format("-record(~p, {~ts}).~n", [H, DefT]),
       M53 = parse_forms(io_lib:format("def() -> \"-record(~p, {~ts}).\".~n", [H, DefT])),
 
       M54 = lists:flatmap(fun({K, Type}) -> 
-									G = case Type of
+                           G = case Type of
                                           {record, R} -> io_lib:format(",is_tuple(V),(~p == element(1, V)) ", [R]) ;
                                           integer -> ",is_integer(V) " ;
                                           float   -> ",is_float(V) " ;
                                           list    -> ",is_list(V) " ;
                                           literal -> ",is_atom(V),((V == 'true') or (V == 'false') or (V == 'null')) "
-										 end,
+                               end,
                            [parse_forms(io_lib:format("~p(#~p{~p = X}) -> X.~n", [K, H, K])),
                             parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p)~s -> R#~p{~p = V}.~n",
                                                       [K, H, G, H, K]))] end, T),
       % Compile forms
       Binary = case compile:forms(lists:flatten([M1,M10,M2,M3,M40,M41,M42,M50,M51,M52,M53,M54])) of 
-						{ok, _, B} -> B ;
-						{ok, _, B, Warnings} -> io:format("Warning : ~p~n", [Warnings]), B ;
-						error -> io:format("Error while compiling : ~p~n", [H]), 
-									<<"">>;
-						{error,Errors,Warnings} -> io:format("Error   : ~p~n", [Errors]),
-															io:format("Warning : ~p~n", [Warnings]),	
-															<<"">> 
-					end,
+                  {ok, _, B} -> B ;
+                  {ok, _, B, Warnings} -> io:format("Warning : ~p~n", [Warnings]), B ;
+                  error -> io:format("Error while compiling : ~p~n", [H]), 
+                           <<"">>;
+                  {error,Errors,Warnings} -> io:format("Error   : ~p~n", [Errors]),
+                                             io:format("Warning : ~p~n", [Warnings]),   
+                                             <<"">> 
+               end,
 
-		% Dump record def if requested
-		_ = case get(jason_to) of
-			  	undefined -> ok ;
-			  	File when is_list(File)     -> append_file(File, RecDef);
-			  	_ -> ok
-			 end,
+      % Dump record def if requested
+      _ = case get(jason_to) of
+              undefined -> ok ;
+              File when is_list(File)     -> append_file(File, RecDef);
+              _ -> ok
+          end,
 
       % Load module
       case code:load_binary(H, atom_to_list(H), Binary) of
@@ -182,17 +182,17 @@ parse_forms(C) ->
 -spec proplistify(any()) -> any().
 
 proplistify([{K,V}]) 
-		when is_binary(K)      -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
+      when is_binary(K)      -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
 proplistify([{K,V}])         -> [{proplistify(K), proplistify(V)}];
 proplistify([{_,_}|_T] = R)  -> lists:flatmap(fun(Z) -> case Z of
-																					{K, V} when is_binary(K) -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
-																					{K, V} -> [{proplistify(K), proplistify(V)}];
-																					O      -> [cast(O)]
-																			 end end, R);
+                                                               {K, V} when is_binary(K) -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
+                                                               {K, V} -> [{proplistify(K), proplistify(V)}];
+                                                               O      -> [cast(O)]
+                                                          end end, R);
 proplistify([_H|_T] = R)     -> case io_lib:printable_unicode_list(R) of
-												 false -> lists:flatmap(fun(Z) -> [proplistify(Z)] end, R);
-											    true  -> cast(R)
-										  end;
+                                     false -> lists:flatmap(fun(Z) -> [proplistify(Z)] end, R);
+                                     true  -> cast(R)
+                                end;
 proplistify({K,V})           -> {safe_list_to_atom(binary_to_list(K)), proplistify(V)};
 proplistify(R)               -> cast(R).
           
@@ -203,14 +203,14 @@ proplistify(R)               -> cast(R).
 -spec cast(any()) -> any().
 
 cast(V) when is_binary(V) -> X = erlang:binary_to_list(V),
-									  case io_lib:printable_unicode_list(X) of
-											 true  -> X;
-											 false -> V
-									  end;
+                             case io_lib:printable_unicode_list(X) of
+                                  true  -> X;
+                                  false -> V
+                             end;
 cast(V) when is_list(V)   -> case io_lib:printable_unicode_list(V) of
-												 false -> lists:flatmap(fun(Z) -> [cast(Z)] end, V);
-											    true  -> V
-									  end;
+                                     false -> lists:flatmap(fun(Z) -> [cast(Z)] end, V);
+                                     true  -> V
+                             end;
 cast(V)                   -> V . 
 
 %%==============================================================================
@@ -232,9 +232,9 @@ append_file(Filename, Bytes)
 %% @doc Safe list to atom (check > 255 of UTF8)
 %% @end
 safe_list_to_atom(L) -> R = case catch list_to_atom(L) of
-											{'EXIT', _} -> list_to_binary(L);
-									      X -> X 
-									 end,
-								R.
+                                 {'EXIT', _} -> list_to_binary(L);
+                                 X -> X 
+                            end,
+                        R.
 
 
