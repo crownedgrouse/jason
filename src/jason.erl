@@ -2,9 +2,9 @@
 %%% File:      jason.erl
 %%% @author    Eric Pailleau <jason@crownedgrouse.com>
 %%% @copyright 2017 crownedgrouse.com
-%%% @doc  
+%%% @doc
 %%% JSON encode/decode Erlang library
-%%% @end  
+%%% @end
 %%%
 %%% Permission to use, copy, modify, and/or distribute this software
 %%% for any purpose with or without fee is hereby granted, provided
@@ -31,7 +31,7 @@
 -export([pp/1, pp/2, types/0]).
 
 -record(opt, {nl      = []     :: list()
-             ,indent  = false  
+             ,indent  = false
              ,records = []     :: list()
              ,mode    = struct :: atom()
              }).
@@ -47,6 +47,7 @@ pp(C) -> jason_pp:indent(C).
 %% @doc Pretty print JSON data
 %% @end
 -spec pp(_, maybe_improper_list() | {'pp',_,_,_,_,_}) -> [any()].
+
 pp(C, Style) -> jason_pp:indent(C, Style).
 
 %%==============================================================================
@@ -61,8 +62,8 @@ encode_file(Term, Target) when is_list(Target) -> encode_file(Term, Target, []).
 %% @end
 -spec encode_file(any, list(), list()) -> atom().
 
-encode_file(Term, Target, Opt) 
-   when is_list(Target) -> 
+encode_file(Term, Target, Opt)
+   when is_list(Target) ->
             file:write_file(Target, encode(Term, Opt)).
 
 %%==============================================================================
@@ -77,95 +78,97 @@ encode(Term) -> encode(Term, []).
 %% @end
 -spec encode(any(), list()) -> list().
 
-encode(Term, O) -> Opt = options(O),
-                   Compact = lists:flatten(encode(Term, Opt, left, 0)),
-                   case Opt#opt.indent of
-                        ""     -> Compact ;
-                        I      -> pp(Compact, I) % TODO
-                   end.
+encode(Term, O) ->
+   Opt = options(O),
+   Compact = lists:flatten(encode(Term, Opt, left, 0)),
+   case Opt#opt.indent of
+      ""     -> Compact ;
+      I      -> pp(Compact, I) % TODO
+   end.
 % MAP
 encode(Term, Opt, Side, Depth)
       when is_map(Term) ->  encode(maps:to_list(Term), Opt#opt{mode = map}, Side, Depth) ;
 % TUPLE left
-encode({L, R}, Opt, left, Depth) 
+encode({L, R}, Opt, left, Depth)
            when is_atom(L),
-(Opt#opt.mode =/= 'record')   
+(Opt#opt.mode =/= 'record')
          -> "{" ++ encode(L, Opt, left, Depth) ++ ": " ++ encode(R, Opt, right, (Depth + 1)) ++ "}";
 % TUPLE right
-encode({L, R}, Opt, right, Depth) 
+encode({L, R}, Opt, right, Depth)
            when is_atom(L),
-(Opt#opt.mode =/= 'record')  
+(Opt#opt.mode =/= 'record')
          -> "{" ++ encode(L, Opt, left,  Depth) ++ ": " ++ encode(R, Opt, right, Depth) ++ "}";
 % TUPLE
-encode(Term, Opt, Side, Depth) 
-      when is_tuple(Term),
-           (Opt#opt.mode =:= 'record')  -> 
-         % Record ?
-         Name = element(1, Term),
-         % Check if a definition was given in option
-         case check_rec_def(Name, Opt#opt.records) of
-              false -> % If 2 elements tuple, encode anyway as proplist
-                       case Term of
-                           {_, _} -> encode(Term, Opt#opt{mode=proplist}, Side, Depth);
-                           _      -> throw({'unable_to_encode', Name, Depth}) 
-                       end;
-              Def   -> X = lists:foldl( fun({A,B}, Acc) -> 
-                                          Acc ++ encode(A, Opt, left, Depth) ++ ": " ++ encode(B, Opt,right, (Depth + 1))
-                                        end, [], record2object(Term, Def)),
-                       "{" ++ string:join(X, ",") ++ "}"
-         end;
+encode(Term, Opt, Side, Depth)
+   when is_tuple(Term),
+         (Opt#opt.mode =:= 'record')  ->
+      % Record ?
+      Name = element(1, Term),
+      % Check if a definition was given in option
+      case check_rec_def(Name, Opt#opt.records) of
+            false -> % If 2 elements tuple, encode anyway as proplist
+                     case Term of
+                        {_, _} -> encode(Term, Opt#opt{mode=proplist}, Side, Depth);
+                        _      -> throw({'unable_to_encode', Name, Depth})
+                     end;
+            Def   -> X = lists:foldl( fun({A,B}, Acc) ->
+                                       Acc ++ encode(A, Opt, left, Depth) ++ ": " ++ encode(B, Opt,right, (Depth + 1))
+                                       end, [], record2object(Term, Def)),
+                     "{" ++ string:join(X, ",") ++ "}"
+      end;
 % LIST
-encode([{_, _}| _] = Term, Opt, _, Depth) 
-      when is_list(Term),
-           ((Opt#opt.mode =:= proplist) or
-           (Opt#opt.mode =:= map) or
-           (Opt#opt.mode =:= struct))  -> 
-                        X = lists:foldl( fun({A,B}, Acc) -> 
-                                          Acc ++ [encode(A, Opt, left, Depth) ++ ": " ++ encode(B, Opt,right, (Depth + 1))] 
-                                         end, [], Term),
-                        "{" ++ string:join(X, ",") ++ "}"
+encode([{_, _}| _] = Term, Opt, _, Depth)
+   when is_list(Term),
+   ((Opt#opt.mode =:= proplist) or
+   (Opt#opt.mode =:= map) or
+   (Opt#opt.mode =:= struct)) ->
+            X = lists:foldl( fun({A,B}, Acc) ->
+                              Acc ++ [encode(A, Opt, left, Depth) ++ ": " ++ encode(B, Opt,right, (Depth + 1))]
+                              end, [], Term),
+            "{" ++ string:join(X, ",") ++ "}"
          ;
-encode(Term, Opt, Side, Depth) 
-      when is_tuple(Term),
-           (tuple_size(Term) > 1) 
-                              -> case element(1, Term) of
-                                    X when is_atom(X) -> encode(Term, Opt#opt{mode='record'}, Side, Depth);
-                                    _ -> encode([Term], Opt, Side, Depth)
-                                   end;
+encode(Term, Opt, Side, Depth)
+   when is_tuple(Term),
+   (tuple_size(Term) > 1) ->
+         case element(1, Term) of
+               X when is_atom(X) -> encode(Term, Opt#opt{mode='record'}, Side, Depth);
+               _ -> encode([Term], Opt, Side, Depth)
+         end;
 encode({}, _Opt, _Side, _Depth) -> "{}" ;
-encode(Term, _Opt, _Side, Depth) 
-      when is_tuple(Term)     -> throw({'invalid_term', Term, Depth}) ;
+encode(Term, _Opt, _Side, Depth)
+   when is_tuple(Term)     -> throw({'invalid_term', Term, Depth}) ;
 
 % INTEGER
 encode(Term, _Opt, _, _Depth)
-      when is_integer(Term) -> io_lib:format("~p", [Term]) ;
+   when is_integer(Term) -> io_lib:format("~p", [Term]) ;
 % FLOAT
 encode(Term, _Opt, _, _Depth)
-      when is_float(Term) ->  Precision = get_precision(Term),
-                              [float_to_list(Term, [{decimals, Precision}, compact])] ;
+   when is_float(Term) ->  Precision = get_precision(Term),
+                           [float_to_list(Term, [{decimals, Precision}, compact])] ;
 % BINARY
 encode(Term, _Opt, _, _Depth)
-      when is_binary(Term) -> "\"" ++ binary_to_list(Term) ++ "\"";
+   when is_binary(Term) -> "\"" ++ binary_to_list(Term) ++ "\"";
 % ATOMS
 encode(null, _Opt, _, _Depth)      -> io_lib:format("null", []) ;
 encode(undefined, _Opt, _, _Depth) -> io_lib:format("null", []) ;
 encode(true, _Opt, _, _Depth)      -> io_lib:format("true", []) ;
 encode(false, _Opt, _, _Depth)     -> io_lib:format("false", []) ;
 encode(Term, _Opt, _, _Depth)
-      when is_atom(Term) -> "\"" ++ atom_to_list(Term) ++ "\"";
+   when is_atom(Term) -> "\"" ++ atom_to_list(Term) ++ "\"";
 % LIST
-encode(Term, Opt, _, Depth) 
-      when is_list(Term) -> case io_lib:printable_unicode_list(Term) of
-                                  false -> A = lists:foldl(fun(X, Acc) -> 
-                                                            Acc ++ [encode(X, Opt, right, (Depth + 1))] 
-                                                           end, [], Term),
-                                           "[" ++ string:join(A, ",") ++ "]" ;
-                                  true  -> "\"" ++ Term ++ "\""
-                             end.
+encode(Term, Opt, _, Depth)
+   when is_list(Term) ->
+      case io_lib:printable_unicode_list(Term) of
+               false -> A = lists:foldl(fun(X, Acc) ->
+                                       Acc ++ [encode(X, Opt, right, (Depth + 1))]
+                                       end, [], Term),
+                        "[" ++ string:join(A, ",") ++ "]" ;
+               true  -> "\"" ++ Term ++ "\""
+      end.
 
 
 %%==============================================================================
-%% @doc Decode JSON data 
+%% @doc Decode JSON data
 %% @end
 -spec decode(any()) -> tuple().
 
@@ -178,36 +181,43 @@ decode(Json) -> decode(Json, []).
 
 decode(Json, Opt) when is_atom(Json)   -> decode(atom_to_list(Json), Opt);
 decode(Json, Opt) when is_binary(Json) -> decode(binary_to_list(Json), Opt);
-decode(Json, Opt) when is_list(Json)   -> 
-      try
-         {ok, X, _} = jason_lex:string(Json), 
-         Mode = proplists:get_value(mode, Opt),
-         put(jason_mode, Mode),
-         To = proplists:get_value(to, Opt),
-         case valid_to_file(To) of
-             true        -> put(jason_to, To) ;
-             false       -> throw({error, "Invalid 'to' record definition dump file : cannot create"});
-             notempty    -> throw({error, "Invalid 'to' record definition dump file : not empty"}) 
-         end,
-         {ok, R}  = jason_yec:parse(X),
-         {ok, R}
-      catch 
-         throw:Term -> Term ;
-         error:Reason -> case Reason of
-                              {badmatch,{error,{Line,_,["syntax error before: ", []]}}} -> 
-                                    {error, Line, lists:flatten(io_lib:format("syntax error before end", []))} ;
-                              {badmatch,{error,{Line,_,["syntax error before: ", [What]]}}} -> 
-                                    {error, Line, lists:flatten(io_lib:format("syntax error before: ~ts", [What]))} ;
-                              _ ->  {error, Reason }
-                         end
-      after
-         erase(jason_mode),
-         case get(jason_to) of
-            undefined -> ok ;
-            _         -> erase(jason_adhoc)
-         end,
-         erase(jason_to)
-      end.
+decode(Json, Opt) when is_list(Json)   ->
+   try
+      {ok, X, _} = jason_lex:string(Json),
+      Mode = proplists:get_value(mode, Opt),
+      put(jason_mode, Mode),
+      To = proplists:get_value(to, Opt),
+      case valid_to_file(To) of
+            true        -> put(jason_to, To) ;
+            false       -> throw({error, "Invalid 'to' record definition dump file : cannot create"});
+            notempty    -> throw({error, "Invalid 'to' record definition dump file : not empty"})
+      end,
+      {ok, R}  = jason_yec:parse(X),
+      case proplists:get_value(return, Opt) of
+         tuple -> {ok, R};
+         _     -> R
+      end
+   catch
+      throw:Term   -> Term ;
+      error:Reason ->  Err = case Reason of
+                                 {badmatch,{error,{Line,_,["syntax error before: ", []]}}} ->
+                                       {Line, lists:flatten(io_lib:format("syntax error before end", []))} ;
+                                 {badmatch,{error,{Line,_,["syntax error before: ", [What]]}}} ->
+                                       {Line, lists:flatten(io_lib:format("syntax error before: ~ts", [What]))} ;
+                                 _ ->  Reason
+                              end,
+                        case proplists:get_value(return, Opt) of
+                           tuple -> {error, Err};
+                           _     -> throw(Err)
+                        end
+   after
+      erase(jason_mode),
+      case get(jason_to) of
+         undefined -> ok ;
+         _         -> erase(jason_adhoc)
+      end,
+      erase(jason_to)
+   end.
 
 %%==============================================================================
 %% @doc Decode JSON file
@@ -221,47 +231,52 @@ decode_file(F) when is_list(F) -> decode_file(F, []).
 %% @end
 -spec decode_file(list(), list()) -> tuple().
 
-decode_file(F, Opt) when is_list(F) -> 
-      try
-         {ok, B} = file:read_file(F),
-         jason:decode(B, Opt)
-      catch
-         throw:Term -> Term ;
-         error:Reason -> case Reason of
-                              {badmatch,{error,enoent}} -> {error, enoent};
-                              _ -> {error, Reason} 
-                         end
-      end.
+decode_file(F, Opt) when is_list(F) ->
+   try
+      {ok, B} = file:read_file(F),
+      jason:decode(B, Opt)
+   catch
+      throw:Term   -> Term ;
+      error:Reason -> Err = case Reason of
+                                 {badmatch,{error,X}} -> X;
+                                 _ -> Reason
+                            end,
+                      case proplists:get_value(return, Opt) of
+                        tuple -> {error, Err};
+                        _     -> throw(Err)
+                      end
+   end.
 
 %%==============================================================================
-%% @doc 
+%% @doc
 %% @end
 %decode_stream(F) when is_pid(F) -> decode_stream(F, [{chunks, 2048]).
 
 %%==============================================================================
-%% @doc 
+%% @doc
 %% @end
-%decode_stream(F, Opt) when is_pid(F) -> 
+%decode_stream(F, Opt) when is_pid(F) ->
 
 %%==============================================================================
 %% @doc Check if record definition was given in options
 %% @end
 -spec check_rec_def(atom(), list()) -> atom() | list().
 
-check_rec_def(Name, Opt) -> case Opt of
-                                 []    -> false ;
-                                 Recs  -> case proplists:get_value(Name, Recs) of
-                                                   undefined -> false ;
-                                                   Res       -> Res
-                                          end
-                            end.
+check_rec_def(Name, Opt) ->
+   case Opt of
+      []    -> false ;
+      Recs  -> case proplists:get_value(Name, Recs) of
+                     undefined -> false ;
+                     Res       -> Res
+               end
+   end.
 
 %%==============================================================================
 %% @doc Translate a record to JSON object
 %% @end
 -spec record2object(tuple(), list()) -> list().
 
-record2object(Term, Def) 
+record2object(Term, Def)
    when is_tuple(Term) -> [_ | T] = erlang:tuple_to_list(Term),
                           lists:zip(Def, T).
 
@@ -270,18 +285,19 @@ record2object(Term, Def)
 %% @end
 -spec valid_to_file(list()) -> atom().
 
-valid_to_file(To) -> case filelib:is_file(To) of
-                          false -> case filelib:is_dir(filename:dirname(To)) of
-                                         true  -> true ;
-                                         false -> false
-                                   end;
-                          true  -> case filelib:is_regular(To) of
-                                      true -> case filelib:file_size(To) of
-                                                   0 -> true ;
-                                                   _ -> notempty
-                                              end
-                                   end                          
-                     end .
+valid_to_file(To) ->
+   case filelib:is_file(To) of
+      false -> case filelib:is_dir(filename:dirname(To)) of
+                  true  -> true ;
+                  false -> false
+               end;
+      true  -> case filelib:is_regular(To) of
+                  true -> case filelib:file_size(To) of
+                              0 -> true ;
+                              _ -> notempty
+                           end
+               end
+   end.
 
 
 %%==============================================================================
@@ -289,48 +305,49 @@ valid_to_file(To) -> case filelib:is_file(To) of
 %% @end
 -spec options(list()) -> tuple().
 
-options(O) -> I = case proplists:get_value(indent, O) of
-                       undefined -> "" ;
-                       false -> "" ;
-                       true  -> "   "
-                  end, 
-              N = case proplists:get_value(indent, O) of
-                       undefined -> "" ;
-                       false -> "" ;
-                       true  -> "\n"
-                  end,
-              R = case proplists:get_value(records, O) of
-                       undefined -> [] ;
-                       X         -> X
-                  end,
-              M = case proplists:get_value(mode, O) of
-                       map      -> map ;
-                       proplist -> proplist ;
-                       'record' -> 'record' ;
-                       _        -> struct 
-                  end,
-              #opt{nl = N
-                  ,indent = I
-                  ,records = R
-                  ,mode = M
-                  }. 
+options(O) ->
+   I = case proplists:get_value(indent, O) of
+            undefined -> "" ;
+            false -> "" ;
+            true  -> "   "
+       end,
+   N = case proplists:get_value(indent, O) of
+            undefined -> "" ;
+            false -> "" ;
+            true  -> "\n"
+       end,
+   R = case proplists:get_value(records, O) of
+            undefined -> [] ;
+            X         -> X
+       end,
+   M = case proplists:get_value(mode, O) of
+            map      -> map ;
+            proplist -> proplist ;
+            'record' -> 'record' ;
+            _        -> struct
+       end,
+   #opt{nl = N
+      ,indent = I
+      ,records = R
+      ,mode = M
+      }.
 
 %%==============================================================================
 %% @doc Get precision of float
 %% @end
 -spec get_precision(float()) -> integer().
- 
-get_precision(F) when is_float(F) -> 
-      case F < 0 of
-         false -> get_precision(F, floor(F), 1);
-         true  -> get_precision(-F, floor(-F), 1)
-      end.
+
+get_precision(F) when is_float(F) ->
+   case F < 0 of
+      false -> get_precision(F, floor(F), 1);
+      true  -> get_precision(-F, floor(-F), 1)
+   end.
 
 get_precision(F, I, P) when is_float(F) ->
-      case F == I of
-         true  -> P ;
-         false -> get_precision(F * 10, floor(F * 10), P+1)
-      end.
+   case F == I of
+      true  -> P ;
+      false -> get_precision(F * 10, floor(F * 10), P+1)
+   end.
 
 %%==============================================================================
 %% @doc Display types transformation
