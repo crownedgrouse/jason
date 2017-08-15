@@ -32,6 +32,7 @@ true   : {token, {'true', TokenLine}}.
 {CHAR} : {token, {'chr', TokenLine, unicode:characters_to_binary(TokenChars)}}.
 
 Erlang code.
+-compile(inline).
 -dialyzer([{nowarn_function, [yyrev/2]}]).
 
 strip(TokenChars,TokenLen) -> lists:sublist(TokenChars, 2, TokenLen - 2).
@@ -57,5 +58,5 @@ dehex(C) when C >= $0, C =< $9 -> C - $0;
 dehex(C) when C >= $a, C =< $f -> C - $a + 10;
 dehex(C) when C >= $A, C =< $F -> C - $A + 10.
 
-parse_string(StringChars) -> 
+parse_string(StringChars) ->
 unescape(StringChars).
