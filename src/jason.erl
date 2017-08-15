@@ -198,12 +198,14 @@ decode(Json, Opt) when is_list(Json)   ->
          _     -> R
       end
    catch
-      throw:Term   -> Term ;
+      throw:Term   ->  Term ;
       error:Reason ->  Err = case Reason of
                                  {badmatch,{error,{Line,_,["syntax error before: ", []]}}} ->
                                        {Line, lists:flatten(io_lib:format("syntax error before end", []))} ;
                                  {badmatch,{error,{Line,_,["syntax error before: ", [What]]}}} ->
                                        {Line, lists:flatten(io_lib:format("syntax error before: ~ts", [What]))} ;
+                                 {badmatch,{error,{Line,jason_lex,{user,What}}, _}} ->
+                                       {Line, lists:flatten(io_lib:format("~ts", [What]))};
                                  _ ->  Reason
                               end,
                         case proplists:get_value(return, Opt) of

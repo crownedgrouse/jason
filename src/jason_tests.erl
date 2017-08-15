@@ -116,29 +116,29 @@ jason_decode_numbers_test() ->
       ?assertEqual({ok, 1}, jason:decode(<<"01">>, [{return, tuple}])),
       ?assertEqual({ok, -1}, jason:decode(<<"-01">>, [{return, tuple}])),
      % integer can't begin with an explicit plus sign",
-     % TODO ?assertMatch({error, {badarg, _}}, jason:decode(<<"+1">>))
+      ?assertMatch({error, _}, jason:decode(<<"+1">>, [{return, tuple}])),
 
      %% Numbers: Floats
      % float: decimal notation",
-     ?assertEqual({ok, 1.23}, jason:decode(<<"1.23">>, [{return, tuple}])),
-     ?assertEqual({ok, 1.23456789}, jason:decode(<<"1.23456789">>, [{return, tuple}])),
+      ?assertEqual({ok, 1.23}, jason:decode(<<"1.23">>, [{return, tuple}])),
+      ?assertEqual({ok, 1.23456789}, jason:decode(<<"1.23456789">>, [{return, tuple}])),
      % float: exponential notation",
-     ?assertEqual({ok, 12.345}, jason:decode(<<"12345e-3">>, [{return, tuple}])), % lower case 'e'
-     ?assertEqual({ok, 12.345}, jason:decode(<<"12345E-3">>, [{return, tuple}])), % upper case 'E'
-     ?assertEqual({ok, 12.345}, jason:decode(<<"12345.0e-3">>, [{return, tuple}])),
-     ?assertEqual({ok, 12.345}, jason:decode(<<"0.12345E2">>, [{return, tuple}])),
-     ?assertEqual({ok, 12.345}, jason:decode(<<"0.12345e+2">>, [{return, tuple}])), % exponent part can begin with plus sign
-     ?assertEqual({ok, 12.345}, jason:decode(<<"0.12345E+2">>, [{return, tuple}])),
-     ?assertEqual({ok, -12.345}, jason:decode(<<"-0.012345e3">>, [{return, tuple}])),
+      ?assertEqual({ok, 12.345}, jason:decode(<<"12345e-3">>, [{return, tuple}])), % lower case 'e'
+      ?assertEqual({ok, 12.345}, jason:decode(<<"12345E-3">>, [{return, tuple}])), % upper case 'E'
+      ?assertEqual({ok, 12.345}, jason:decode(<<"12345.0e-3">>, [{return, tuple}])),
+      ?assertEqual({ok, 12.345}, jason:decode(<<"0.12345E2">>, [{return, tuple}])),
+      ?assertEqual({ok, 12.345}, jason:decode(<<"0.12345e+2">>, [{return, tuple}])), % exponent part can begin with plus sign
+      ?assertEqual({ok, 12.345}, jason:decode(<<"0.12345E+2">>, [{return, tuple}])),
+      ?assertEqual({ok, -12.345}, jason:decode(<<"-0.012345e3">>, [{return, tuple}])),
      % float: invalid format",
-     %?assertMatch({error, {badarg, _}}, jason:decode(<<".123">>)),  % omitted integer part
-     %?assertMatch({error, {badarg, _}}, jason:decode(<<"0.">>)),    % omitted fraction part: EOS
-     %?assertMatch({error, {badarg, _}}, jason:decode(<<"0.e+3">>)), % omitted fraction part: with exponent part
-     %?assertMatch({error, {badarg, _}}, jason:decode(<<"0.1e">>)),    % imcomplete fraction part
-     %?assertMatch({error, {badarg, _}}, jason:decode(<<"0.1e-">>)),   % imcomplete fraction part
-     %?assertMatch({error, {badarg, _}}, jason:decode(<<"0.1ee-1">>)), % duplicated 'e'
-     %?assertMatch({error, {badarg, _}}, jason:decode(<<"0.1e--1">>)), % duplicated sign
-     %?assertEqual(0.1, <<".2">>}, jason:decode(<<"0.1.2">>)),     % duplicated '.': interpreted as individual tokens
+      ?assertMatch({error, _}, jason:decode(<<".123">>, [{return, tuple}])),  % omitted integer part
+      ?assertMatch({error, _}, jason:decode(<<"0.">>, [{return, tuple}])),    % omitted fraction part: EOS
+      ?assertMatch({error, _}, jason:decode(<<"0.e+3">>, [{return, tuple}])), % omitted fraction part: with exponent part
+      ?assertMatch({error, _}, jason:decode(<<"0.1e">>, [{return, tuple}])),    % imcomplete fraction part
+      ?assertMatch({error, _}, jason:decode(<<"0.1e-">>, [{return, tuple}])),   % imcomplete fraction part
+      ?assertMatch({error, _}, jason:decode(<<"0.1ee-1">>, [{return, tuple}])), % duplicated 'e'
+      ?assertMatch({error, _}, jason:decode(<<"0.1e--1">>, [{return, tuple}])), % duplicated sign
+      ?assertMatch({error, _}, jason:decode(<<"0.1.2">>, [{return, tuple}])),   % duplicated '.': interpreted as individual tokens
       ok.
 
 jason_decode_strings_test() ->
@@ -176,11 +176,10 @@ jason_decode_strings_test() ->
      {ok, I4} = jason:decode(Input4, [{return, tuple}]),
      ?assertEqual(Expected4, unicode:characters_to_list(I4)),
      % string: surrogate pairs
-     %Input5    = <<"\"\\ud848\\udc49\\ud848\\udc9a\\ud848\\udcfc\"">>,
-     %Expected5 = "𢁉𢂚𢃼",
+     Input5    = <<"\"\\ud848\\udc49\\ud848\\udc9a\\ud848\\udcfc\"">>,
+     %Expected5 = "𢁉𢂚𢃼", % TODO handle UTF16
      %?assertEqual(Expected5, jason:decode(Input5, [{return, tuple}])) ,
-
-      % string: invalid escape characters",
+     ?assertMatch({error, _} , catch jason:decode(Input5, [{return, tuple}])) ,
      ok.
 
 jason_decode_arrays_test() ->

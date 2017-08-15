@@ -26,7 +26,11 @@ true   : {token, {'true', TokenLine}}.
 
 {WS}+   : skip_token.
 
-"[^"\\]*(\\.[^"\\]*)*"  : {token,{'chr', TokenLine, unicode:characters_to_binary(parse_string(strip(TokenChars, TokenLen)))}}.
+"[^"\\]*(\\.[^"\\]*)*"  : case unicode:characters_to_binary(parse_string(strip(TokenChars, TokenLen))) of
+                              {error, _, _}      -> {error, "unicode error"} ;
+                              {incomplete, _, _} -> {error, "unicode error"} ;
+                              X                  -> {token,{'chr', TokenLine, X}}
+                           end.
 
 
 {CHAR} : {token, {'chr', TokenLine, unicode:characters_to_binary(TokenChars)}}.
