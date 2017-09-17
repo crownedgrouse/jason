@@ -134,6 +134,8 @@ encode(Term, Opt, Side, Depth)
                X when is_atom(X) -> encode(Term, Opt#opt{mode='record'}, Side, Depth);
                _ -> encode([Term], Opt, Side, Depth)
          end;
+encode({L}, Opt, Side, Depth)
+   when is_list(L) -> encode(L, Opt, Side, Depth) ;
 encode({}, _Opt, _Side, _Depth) -> "{}" ;
 encode(Term, _Opt, _Side, Depth)
    when is_tuple(Term)     -> throw({'invalid_term', Term, Depth}) ;
