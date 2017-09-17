@@ -7,14 +7,14 @@ Work still in progress...  but Beta testing allowed !
 
 Yet another Nth JSON Erlang project, while there are already good ones ?
 
-Yes, because other projects, which are really good ones, were missing some features mainly for record handling.
+Yes, `jason` offer features mainly for Erlang records handling, which are not widely proposed in other projects.
 
-`jason` do not use NIF, so if performance is your main interest, see other well known projects using NIFs.
+`jason` do not use NIF, so if performance is your main interest, see other well known projects using NIFs. However see [Benchmark](https://github.com/crownedgrouse/jason/wiki/Benchmark).
 
 So what makes `jason` usefull for me, then ?
 
 * `jason`'s bias is to be able to [encode and decode records at runtime](https://github.com/crownedgrouse/jason/wiki/Records),
-without any code manipulation at compile time. 
+without any code manipulation at compile time.
 This make `jason` easy to use, with a minimal footprint in your own source code.
 * `jason` let you easily convert [JSON object to record](https://github.com/crownedgrouse/jason/wiki/Records) specification, and create for
 you ad-hoc modules to handle records. Even with deeply nested JSON objects.
@@ -61,8 +61,8 @@ any                     -> "any"                -> <<"any">>
 2.30e-3                 -> 0.0023               -> 0.0023
 
 %% List
-[1,2,3]                 -> [1,2,3]              -> [1,2,3] 
-[a,"b",<<"c">>]         -> ["a","b","c"]        -> [<<"a">>,<<"b">>,<<"c">>] 
+[1,2,3]                 -> [1,2,3]              -> [1,2,3]
+[a,"b",<<"c">>]         -> ["a","b","c"]        -> [<<"a">>,<<"b">>,<<"c">>]
 
 %% Binary (key/value) mode=struct (default)
 <<"abc">>               -> "abc"                -> <<"abc">>
@@ -75,7 +75,7 @@ any                     -> "any"                -> <<"any">>
 %  mode=map
 {<<"abc">>,<<"def">>}   -> {"abc": "def"}       -> #{abc => "def"}
 %  mode=record
-{<<"abc">>,<<"def">>}   -> {"abc": "def"}       -> {'111259705',"def"} 
+{<<"abc">>,<<"def">>}   -> {"abc": "def"}       -> {'111259705',"def"}
                                                 with -record('111259705', {abc  = []  :: list()}).
 
 %% Proplist
@@ -86,7 +86,7 @@ any                     -> "any"                -> <<"any">>
 %  mode=map
 [{abc,<<"def">>}]       -> {"abc": "def"}       -> #{abc => "def"}
 %  mode=record
-[{abc,<<"def">>}]       -> {"abc": "def"}       -> {'111259705',"def"} 
+[{abc,<<"def">>}]       -> {"abc": "def"}       -> {'111259705',"def"}
                                                 with -record('111259705', {abc  = []  :: list()}).
 
 %% Map
@@ -97,7 +97,7 @@ any                     -> "any"                -> <<"any">>
 %  mode=map
 #{"abc" => <<"def">>}   -> {"abc": "def"}       -> #{abc => "def"}
 %  mode=record
-#{"abc" => <<"def">>}   -> {"abc": "def"}       -> {'111259705',"def"} 
+#{"abc" => <<"def">>}   -> {"abc": "def"}       -> {'111259705',"def"}
                                                 with -record('111259705', {abc  = []  :: list()}).
 
 %% Record - encoding using option [{records, [{r, record_info(fields, r)}]}] or [{records, [{r, [k1,k2]}]}]
@@ -109,7 +109,7 @@ any                     -> "any"                -> <<"any">>
 %  mode=map
 {r,1,<<"ab">>}          -> {"k1": 1,"k2": "ab"} -> #{k1 => 1,k2 => "ab"}
 %  mode=record
-{r,1,<<"ab">>}          -> {"k1": 1,"k2": "ab"} -> {'8056669',1,"ab"} 
+{r,1,<<"ab">>}          -> {"k1": 1,"k2": "ab"} -> {'8056669',1,"ab"}
                                                 with -record('8056669', {k1  = 0  :: integer(), k2  = []  :: list()}).
 ```
 
