@@ -188,6 +188,7 @@ decode(Json, Opt) when is_list(Json)   ->
       put(jason_mode, Mode),
       To = proplists:get_value(to, Opt),
       case valid_to_file(To) of
+            skip        -> ok ;
             true        -> put(jason_to, To) ;
             false       -> throw({error, "Invalid 'to' record definition dump file : cannot create"});
             notempty    -> throw({error, "Invalid 'to' record definition dump file : not empty"})
@@ -287,7 +288,7 @@ record2object(Term, Def)
 %% @end
 -spec valid_to_file(list()) -> atom().
 
-valid_to_file(To) ->
+valid_to_file(To) when is_list(To) ->
    case filelib:is_file(To) of
       false -> case filelib:is_dir(filename:dirname(To)) of
                   true  -> true ;
@@ -299,7 +300,9 @@ valid_to_file(To) ->
                               _ -> notempty
                            end
                end
-   end.
+   end;
+
+valid_to_file(_) -> skip.
 
 
 %%==============================================================================
