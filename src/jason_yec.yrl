@@ -66,4 +66,5 @@ literal -> false : false.
 literal -> null  : null.
 
 Erlang code.
+-compile(inline).
 
