@@ -67,4 +67,5 @@ literal -> null  : null.
 
 Erlang code.
 -compile(inline).
+-compile([native, {hipe, [o3]}]).
 
