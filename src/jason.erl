@@ -112,7 +112,7 @@ encode(Term, Opt, Side, Depth)
                         _      -> throw({'unable_to_encode', Name, Depth})
                      end;
             Def   -> X = lists:foldl( fun({A,B}, Acc) ->
-                                       Acc ++ encode(A, Opt, left, Depth) ++ ": " ++ encode(B, Opt,right, (Depth + 1))
+                                       Acc ++ [encode(A, Opt, left, Depth) ++ ": " ++ encode(B, Opt,right, (Depth + 1))]
                                        end, [], record2object(Term, Def)),
                      "{" ++ string:join(X, ",") ++ "}"
       end;
@@ -140,7 +140,7 @@ encode(Term, _Opt, _Side, Depth)
 
 % INTEGER
 encode(Term, _Opt, _, _Depth)
-   when is_integer(Term) -> io_lib:format("~p", [Term]) ;
+   when is_integer(Term) -> integer_to_list(Term) ;
 % FLOAT
 encode(Term, _Opt, _, _Depth)
    when is_float(Term) ->  Precision = get_precision(Term),
@@ -341,16 +341,26 @@ options(O) ->
 
 get_precision(F) when is_float(F) ->
    case F < 0 of
-      false -> get_precision(F, floor(F), 1);
-      true  -> get_precision(-F, floor(-F), 1)
+      false -> get_precision(F, lfloor(F), 1);
+      true  -> get_precision(-F, lfloor(-F), 1)
    end.
 
 get_precision(F, I, P) when is_float(F) ->
    case F == I of
       true  -> P ;
-      false -> get_precision(F * 10, floor(F * 10), P+1)
+      false -> get_precision(F * 10, lfloor(F * 10), P+1)
    end.
 
+%%==============================================================================
+%% @doc floor as local function since erlang:floor/1 not available in older release
+%% @end
+lfloor(X) ->
+    T = trunc(X),
+    case (X - T) of
+        Neg when Neg < 0 -> T;
+        Pos when Pos > 0 -> T + 1;
+        _ -> T
+    end.
 %%==============================================================================
 %% @doc Display types transformation
 %% @end
@@ -362,166 +372,166 @@ io:format("=====================================================================
 % Null
 Null = null,
 NUll = jason:encode(Null),
-{ok, NULl} = jason:decode(NUll),
+{ok, NULl} = jason:decode(NUll, [{return, tuple}]),
 io:format("~n%% Atoms~n~p\t\t\t-> ~s \t\t-> ~p~n",[Null, NUll, NULl]),
 % Undefined
 Undef = undefined,
 UNdef = jason:encode(Undef),
-{ok, UNDef} = jason:decode(UNdef),
+{ok, UNDef} = jason:decode(UNdef, [{return, tuple}]),
 io:format("~p\t\t-> ~s \t\t-> ~p~n",[Undef, UNdef, UNDef]),
 % True
 True = true,
 TRue = jason:encode(True),
-{ok, TRUe} = jason:decode(TRue),
+{ok, TRUe} = jason:decode(TRue, [{return, tuple}]),
 io:format("~p\t\t\t-> ~s \t\t-> ~p~n",[True, TRue, TRUe]),
 % False
 False = false,
 FAlse = jason:encode(False),
-{ok, FALse} = jason:decode(FAlse),
+{ok, FALse} = jason:decode(FAlse, [{return, tuple}]),
 io:format("~p\t\t\t-> ~s \t\t-> ~p~n",[False, FAlse, FALse]),
 % Other atom
 Any = any,
 ANy = jason:encode(Any),
-{ok, ANY} = jason:decode(ANy),
+{ok, ANY} = jason:decode(ANy, [{return, tuple}]),
 io:format("~p\t\t\t-> ~s \t\t-> ~p~n",[Any, ANy, ANY]),
 
 % Integer
 Int = 123,
 INt = jason:encode(Int),
-{ok, INT} = jason:decode(INt),
+{ok, INT} = jason:decode(INt, [{return, tuple}]),
 io:format("~n%% Integer~n~p\t\t\t-> ~s \t\t\t-> ~p~n",[Int, INt, INT]),
 % Float
 Float = 123.456789,
 FLoat = jason:encode(Float),
-{ok, FLOat} = jason:decode(FLoat),
+{ok, FLOat} = jason:decode(FLoat, [{return, tuple}]),
 io:format("~n%% Float (Automatic precision)~n~p\t\t-> ~s \t\t-> ~p~n",[Float, FLoat, FLOat]),
 
 Float2 = 2.30e+0,
 FLoat2 = jason:encode(Float2),
-{ok, FLOat2} = jason:decode(FLoat2),
+{ok, FLOat2} = jason:decode(FLoat2, [{return, tuple}]),
 io:format("2.30e+0\t\t\t-> ~s \t\t\t-> ~p~n",[FLoat2, FLOat2]),
 
 Float3 = 2.30e+3,
 FLoat3 = jason:encode(Float3),
-{ok, FLOat3} = jason:decode(FLoat3),
+{ok, FLOat3} = jason:decode(FLoat3, [{return, tuple}]),
 io:format("2.30e+3\t\t\t-> ~s \t\t-> ~p~n",[FLoat3, FLOat3]),
 
 Float4 = 2.30e-3,
 FLoat4 = jason:encode(Float4),
-{ok, FLOat4} = jason:decode(FLoat4),
+{ok, FLOat4} = jason:decode(FLoat4, [{return, tuple}]),
 io:format("2.30e-3\t\t\t-> ~s \t\t-> ~p~n",[FLoat4, FLOat4]),
 
 % List
 List = [1,2,3],
 LIst = jason:encode(List),
-{ok, LISt} = jason:decode(LIst),
+{ok, LISt} = jason:decode(LIst, [{return, tuple}]),
 io:format("~n%% List~n~p\t\t\t-> ~s \t\t-> ~p ~n",[List, LIst, LISt]),
 
 List2 = ['a',"b",<<"c">>],
 LIst2 = jason:encode(List2),
-{ok, LISt2} = jason:decode(LIst2),
+{ok, LISt2} = jason:decode(LIst2, [{return, tuple}]),
 io:format("~p\t\t-> ~s \t-> ~p ~n",[List2, LIst2, LISt2]),
 % Binary
 Bin1 = <<"abc">>,
 BIn1 = jason:encode(Bin1),
-{ok, [{_, BIN1}]} = jason:decode("{ \"key\":"++  BIn1 ++ "}"),
+{ok, [{_, BIN1}]} = jason:decode("{ \"key\":"++  BIn1 ++ "}", [{return, tuple}]),
 io:format("~n%% Binary (key/value) mode=struct (default)~n~p\t\t-> ~s \t\t-> ~p~n",[Bin1, BIn1, BIN1]),
 
 % STRUCT
 Bin2s = {<<"abc">>,<<"def">>},
 BIn2s = jason:encode(Bin2s),
-{ok, BIN2s} = jason:decode(BIn2s, [{mode, struct}]),
+{ok, BIN2s} = jason:decode(BIn2s, [{mode, struct}, {return, tuple}]),
 io:format("~n%% Struct~n%  mode=struct (default)~n~p\t-> ~s \t-> ~p~n",[Bin2s, BIn2s, BIN2s]),
 
 Bin3s = {<<"abc">>,<<"def">>},
 BIn3s = jason:encode(Bin3s),
-{ok, BIN3s} = jason:decode(BIn3s, [{mode, proplist}]),
+{ok, BIN3s} = jason:decode(BIn3s, [{mode, proplist}, {return, tuple}]),
 io:format("%  mode=proplist~n~p\t-> ~s \t-> ~p~n",[Bin3s, BIn3s, BIN3s]),
 
 
 Bin4s = {<<"abc">>,<<"def">>},
 BIn4s = jason:encode(Bin4s),
-{ok, BIN4s} = jason:decode(BIn4s, [{mode, map}]),
+{ok, BIN4s} = jason:decode(BIn4s, [{mode, map}, {return, tuple}]),
 io:format("%  mode=map~n~p\t-> ~s \t-> ~p~n",[Bin4s, BIn4s, BIN4s]),
 
 Bin5s = {<<"abc">>,<<"def">>},
 BIn5s = jason:encode(Bin5s),
-{ok, {Rs, BIN5s}} = jason:decode(BIn5s, [{mode, 'record'}]),
+{ok, {Rs, BIN5s}} = jason:decode(BIn5s, [{mode, 'record'}, {return, tuple}]),
 io:format("%  mode=record~n~p\t-> ~s \t-> ~p ~n",[Bin5s, BIn5s, {Rs, BIN5s}]),
 io:format("\t\t\t\t\t\twith ~s~n",[Rs:def()]),
 
 % PROPLIST
 Bin2p = [{abc,<<"def">>}],
 BIn2p = jason:encode(Bin2p),
-{ok, BIN2p} = jason:decode(BIn2p, [{mode, struct}]),
+{ok, BIN2p} = jason:decode(BIn2p, [{mode, struct}, {return, tuple}]),
 io:format("~n%% Proplist~n%  mode=struct (default)~n~p\t-> ~s \t-> ~p~n",[Bin2p, BIn2p, BIN2p]),
 
 Bin3p = [{abc,<<"def">>}],
 BIn3p = jason:encode(Bin3p),
-{ok, BIN3p} = jason:decode(BIn3p, [{mode, proplist}]),
+{ok, BIN3p} = jason:decode(BIn3p, [{mode, proplist}, {return, tuple}]),
 io:format("%  mode=proplist~n~p\t-> ~s \t-> ~p~n",[Bin3p, BIn3p, BIN3p]),
 
 
 Bin4p = [{abc,<<"def">>}],
 BIn4p = jason:encode(Bin4p),
-{ok, BIN4p} = jason:decode(BIn4p, [{mode, map}]),
+{ok, BIN4p} = jason:decode(BIn4p, [{mode, map}, {return, tuple}]),
 io:format("%  mode=map~n~p\t-> ~s \t-> ~p~n",[Bin4p, BIn4p, BIN4p]),
 
 Bin5p = [{abc,<<"def">>}],
 BIn5p = jason:encode(Bin5p),
-{ok, {Rp, BIN5p}} = jason:decode(BIn5p, [{mode, 'record'}]),
+{ok, {Rp, BIN5p}} = jason:decode(BIn5p, [{mode, 'record'}, {return, tuple}]),
 io:format("%  mode=record~n~p\t-> ~s \t-> ~p ~n",[Bin5p, BIn5p, {Rp, BIN5p}]),
 io:format("\t\t\t\t\t\twith ~s~n",[Rp:def()]),
 
 % MAP
 Bin2m = #{"abc" => <<"def">>},
 BIn2m = jason:encode(Bin2m),
-{ok, BIN2m} = jason:decode(BIn2m, [{mode, struct}]),
+{ok, BIN2m} = jason:decode(BIn2m, [{mode, struct}, {return, tuple}]),
 io:format("~n%% Map~n%  mode=struct (default)~n~p\t-> ~s \t-> ~p~n",[Bin2m, BIn2m, BIN2m]),
 
 Bin3m = #{"abc" => <<"def">>},
 BIn3m = jason:encode(Bin3m),
-{ok, BIN3m} = jason:decode(BIn3m, [{mode, proplist}]),
+{ok, BIN3m} = jason:decode(BIn3m, [{mode, proplist}, {return, tuple}]),
 io:format("%  mode=proplist~n~p\t-> ~s \t-> ~p~n",[Bin3m, BIn3m, BIN3m]),
 
 
 Bin4m = #{"abc" => <<"def">>},
 BIn4m = jason:encode(Bin4m),
-{ok, BIN4m} = jason:decode(BIn4m, [{mode, map}]),
+{ok, BIN4m} = jason:decode(BIn4m, [{mode, map}, {return, tuple}]),
 io:format("%  mode=map~n~p\t-> ~s \t-> ~p~n",[Bin4m, BIn4m, BIN4m]),
 
 Bin5m = #{"abc" => <<"def">>},
 BIn5m = jason:encode(Bin5m),
-{ok, {Rm, BIN5m}} = jason:decode(BIn5m, [{mode, 'record'}]),
+{ok, {Rm, BIN5m}} = jason:decode(BIn5m, [{mode, 'record'}, {return, tuple}]),
 io:format("%  mode=record~n~p\t-> ~s \t-> ~p ~n",[Bin5m, BIn5m, {Rm, BIN5m}]),
 io:format("\t\t\t\t\t\twith ~s~n",[Rm:def()]),
 
 % RECORD
 Bin2r = {'r', 1, <<"ab">>},
 BIn2r = jason:encode(Bin2r, [{records, [{r, [k1,k2]}]}]),
-{ok, BIN2r} = jason:decode(BIn2r, [{mode, struct}]),
+{ok, BIN2r} = jason:decode(BIn2r, [{mode, struct}, {return, tuple}]),
 io:format("~n%% Record - encoding using option [{records, [{r, record_info(fields, r)}]}] or [{records, [{r, [k1,k2]}]}]~n%  mode=struct (default)~n~p\t\t-> ~s -> ~p~n",[Bin2r, BIn2r, BIN2r]),
 
 Bin3r = {'r', 1, <<"ab">>},
 BIn3r = jason:encode(Bin3r, [{records, [{r, [k1,k2]}]}]),
-{ok, BIN3r} = jason:decode(BIn3r, [{mode, proplist}]),
+{ok, BIN3r} = jason:decode(BIn3r, [{mode, proplist}, {return, tuple}]),
 io:format("%  mode=proplist~n~p\t\t-> ~s -> ~p~n",[Bin3r, BIn3r, BIN3r]),
 
 
 Bin4r = {'r', 1, <<"ab">>},
 BIn4r = jason:encode(Bin4r, [{records, [{r, [k1,k2]}]}]),
-{ok, BIN4r} = jason:decode(BIn4r, [{mode, map}]),
+{ok, BIN4r} = jason:decode(BIn4r, [{mode, map}, {return, tuple}]),
 io:format("%  mode=map~n~p\t\t-> ~s -> ~p~n",[Bin4r, BIn4r, BIN4r]),
 
 Bin5r = {'r', 1, <<"ab">>},
 BIn5r = jason:encode(Bin5r, [{records, [{r, [k1,k2]}]}]),
-{ok, BIN5r} = jason:decode(BIn5r, [{mode, 'record'}]),
+{ok, BIN5r} = jason:decode(BIn5r, [{mode, 'record'}, {return, tuple}]),
 R5 = element(1, BIN5r),
 io:format("%  mode=record~n~p\t\t-> ~s -> ~p ~n",[Bin5r, BIn5r, BIN5r]),
 io:format("\t\t\t\t\t\twith ~s~n",[R5:def()]),
 
 % TODO transcode record name
-{ok, BIN6r} = jason:decode(BIn5r, [{mode, 'record'}, {records, [{r, [k1,k2]}]}]),
+{ok, BIN6r} = jason:decode(BIn5r, [{mode, 'record'}, {records, [{r, [k1,k2]}]}, {return, tuple}]),
 R6 = element(1, BIN6r),
 io:format("~n%  mode=record - decoding using option [{records, [{r, [k1,k2]}]}]~n\t\t\t\t\t\t-> ~p ~n",[BIN6r]),
 io:format("\t\t\t\t\t\twith ~s~n",[R6:def()])

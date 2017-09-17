@@ -2,9 +2,9 @@
 %%% File:      jason_lib.erl
 %%% @author    Eric Pailleau <jason@crownedgrouse.com>
 %%% @copyright 2017 crownedgrouse.com
-%%% @doc  
+%%% @doc
 %%% Library for Jason
-%%% @end  
+%%% @end
 %%%
 %%% Permission to use, copy, modify, and/or distribute this software
 %%% for any purpose with or without fee is hereby granted, provided
@@ -28,14 +28,14 @@
 
 %% MAPS %%
 %%==============================================================================
-%% @doc Translate to map 
+%% @doc Translate to map
 %% @end
 -spec mapify(any()) -> any().
 
-mapify([{_,_}|_T] = Obj) -> 
+mapify([{_,_}|_T] = Obj) ->
           {_, M} = lists:mapfoldl(fun({K, V}, Acc) -> {{K, V}, Acc#{safe_list_to_atom(binary_to_list(K)) => mapify(V)}} end , #{}, Obj),
           M;
-mapify([_H|_T] = Obj) -> 
+mapify([_H|_T] = Obj) ->
           {_, M} = lists:mapfoldl(fun(Z, Acc) -> {Z, Acc ++ [mapify(Z)]} end , [], Obj),
           M;
 mapify({K, V}) when is_list(V) -> #{safe_list_to_atom(binary_to_list(K)) => mapify(V)};
@@ -48,8 +48,8 @@ mapify(X) -> cast(X).
 %% @end
 -spec recordify(list()) -> tuple().
 
-recordify(Obj) 
-   when is_list(Obj) 
+recordify(Obj)
+   when is_list(Obj)
    -> % Replace binary keys by atom key, and detect values types
                   R = lists:flatmap(fun({K, V}) -> [{list_to_atom(binary_to_list(K)), cast(V)}] end, Obj),
                   T = lists:flatmap(fun({K, V}) -> [{K, detect_type(V)}] end, R),
@@ -84,21 +84,21 @@ detect_type(V) when is_tuple(V)   -> {record, element(1, V)}.
 %% @end
 -spec create_module(atom(), list()) -> atom().
 
-create_module(H, T) -> 
+create_module(H, T) ->
       % Module declaration
       M1 = parse_forms(io_lib:format("-module(~p).~n", [H])),
       {Ks, _Ts} = lists:unzip(T),
       M10 = parse_forms(io_lib:format("-jason(argonaut).~n", [])),
 
       % Functions export
-      M2 = parse_forms(io_lib:format("-export([new/0, fields/0, size/0, def/0, ~ts]).~n", 
+      M2 = parse_forms(io_lib:format("-export([new/0, fields/0, size/0, def/0, ~ts]).~n",
                         [string:join(lists:flatmap(fun(K) -> [io_lib:format("~p/1,~p/2", [K,K])] end, Ks), ", ")])),
 
       % Json types definition
       M3 = parse_forms(io_lib:format("-type literal() :: null | true | false .~n",[])),
 
       % Record definition
-      DefT = string:join(lists:flatmap(fun({K, V}) -> 
+      DefT = string:join(lists:flatmap(fun({K, V}) ->
                            Def1  =    case V of
                                           {record, R} -> io_lib:format(" = ~p:new() ", [R]) ;
                                           integer -> " = 0 " ;
@@ -110,8 +110,8 @@ create_module(H, T) ->
                                           {record, A} -> "'" ++  atom_to_list(A) ++ "':'" ++ atom_to_list(A) ++ "'" ;
                                           V when is_atom(V) -> atom_to_list(V)
                                      end,
-                           [io_lib:format("~p ~s :: ~s()", [K, Def1, Type1])] 
-                                                   end, T), ", "),   
+                           [io_lib:format("~p ~s :: ~s()", [K, Def1, Type1])]
+                                                   end, T), ", "),
       M40 = parse_forms(io_lib:format("-record(~p, {~ts}).~n", [H, DefT])),
 
       M41 = parse_forms(io_lib:format("-opaque ~p() :: #~p{}.~n", [H, H])),
@@ -125,7 +125,7 @@ create_module(H, T) ->
       RecDef = io_lib:format("-record(~p, {~ts}).~n", [H, DefT]),
       M53 = parse_forms(io_lib:format("def() -> \"-record(~p, {~ts}).\".~n", [H, DefT])),
 
-      M54 = lists:flatmap(fun({K, Type}) -> 
+      M54 = lists:flatmap(fun({K, Type}) ->
                            G = case Type of
                                           {record, R} -> io_lib:format(",is_tuple(V),(~p == element(1, V)) ", [R]) ;
                                           integer -> ",is_integer(V) " ;
@@ -137,14 +137,14 @@ create_module(H, T) ->
                             parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p)~s -> R#~p{~p = V}.~n",
                                                       [K, H, G, H, K]))] end, T),
       % Compile forms
-      Binary = case compile:forms(lists:flatten([M1,M10,M2,M3,M40,M41,M42,M50,M51,M52,M53,M54])) of 
+      Binary = case compile:forms(lists:flatten([M1,M10,M2,M3,M40,M41,M42,M50,M51,M52,M53,M54])) of
                   {ok, _, B} -> B ;
                   {ok, _, B, Warnings} -> io:format("Warning : ~p~n", [Warnings]), B ;
-                  error -> io:format("Error while compiling : ~p~n", [H]), 
+                  error -> io:format("Error while compiling : ~p~n", [H]),
                            <<"">>;
                   {error,Errors,Warnings} -> io:format("Error   : ~p~n", [Errors]),
-                                             io:format("Warning : ~p~n", [Warnings]),   
-                                             <<"">> 
+                                             io:format("Warning : ~p~n", [Warnings]),
+                                             <<"">>
                end,
 
       % Dump record def if requested
@@ -165,14 +165,14 @@ create_module(H, T) ->
 %% @end
 -spec parse_forms(list()) -> atom() | list().
 
-parse_forms(C) -> 
+parse_forms(C) ->
          Code = lists:flatten(C),
          case erl_scan:string(lists:flatten(Code)) of
               {ok, S, _} ->  case erl_parse:parse_form(S) of
                                  {ok, PF}    -> PF ;
                                  {error, Ei} -> erlang:display({parse_error, Ei, io_lib:format("~ts",[Code])}), false
                              end;
-              {error, EI, EL} -> erlang:display({scan_error, EI, EL, io_lib:format("~ts",[Code])}), false 
+              {error, EI, EL} -> erlang:display({scan_error, EI, EL, io_lib:format("~ts",[Code])}), false
          end.
 
 %% PROPLIST %%
@@ -181,7 +181,7 @@ parse_forms(C) ->
 %% @end
 -spec proplistify(any()) -> any().
 
-proplistify([{K,V}]) 
+proplistify([{K,V}])
       when is_binary(K)      -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
 proplistify([{K,V}])         -> [{proplistify(K), proplistify(V)}];
 proplistify([{_,_}|_T] = R)  -> lists:flatmap(fun(Z) -> case Z of
@@ -195,7 +195,7 @@ proplistify([_H|_T] = R)     -> case io_lib:printable_unicode_list(R) of
                                 end;
 proplistify({K,V})           -> {safe_list_to_atom(binary_to_list(K)), proplistify(V)};
 proplistify(R)               -> cast(R).
-          
+
 %% General %%
 %%==============================================================================
 %% @doc Cast data (list if printable, otherwise binary)
@@ -211,14 +211,14 @@ cast(V) when is_list(V)   -> case io_lib:printable_unicode_list(V) of
                                      false -> lists:flatmap(fun(Z) -> [cast(Z)] end, V);
                                      true  -> V
                              end;
-cast(V)                   -> V . 
+cast(V)                   -> V .
 
 %%==============================================================================
 %% @doc Append data to file
 %% @end
 -spec append_file(list(), any()) -> atom().
 
-append_file(Filename, Bytes) 
+append_file(Filename, Bytes)
     when is_list(Filename) ->
     case file:open(Filename, [append]) of
         {ok, IoDevice} ->
@@ -233,8 +233,29 @@ append_file(Filename, Bytes)
 %% @end
 safe_list_to_atom(L) -> R = case catch list_to_atom(L) of
                                  {'EXIT', _} -> list_to_binary(L);
-                                 X -> X 
+                                 X -> X
                             end,
                         R.
 
+%%==============================================================================
+%% @doc Detect encoding TODO
+%% @end
+%% 3.  Encoding
+%%
+%%   JSON text SHALL be encoded in Unicode.  The default encoding is
+%%   UTF-8.
+%%   Since the first two characters of a JSON text will always be ASCII
+%%   characters [RFC0020], it is possible to determine whether an octet
+%%   stream is UTF-8, UTF-16 (BE or LE), or UTF-32 (BE or LE) by looking
+%%   at the pattern of nulls in the first four octets.
+%%           00 00 00 xx  UTF-32BE
+%%           00 xx 00 xx  UTF-16BE
+%%           xx 00 00 00  UTF-32LE
+%%           xx 00 xx 00  UTF-16LE
+%%           xx xx xx xx  UTF-8
+%detect_encoding() -> {utf32, big} ;
+%detect_encoding() -> {utf16, big} ;
+%detect_encoding() -> {utf32, little} ;
+%detect_encoding() -> {utf16, little} ;
+%detect_encoding(_) -> utf8 .
 
