@@ -26,7 +26,7 @@ true   : {token, {'true', TokenLine}}.
 
 {WS}+   : skip_token.
 
-"[^"\\]*(\\.[^"\\]*)*"  : case unicode:characters_to_binary(parse_string(strip(TokenChars, TokenLen))) of
+"[^"\\]*(\\.[^"\\]*)*"  : case unicode:characters_to_binary(unescape(lists:sublist(TokenChars, 2, TokenLen - 2))) of
                               {error, _, _}      -> {error, "unicode error"} ;
                               {incomplete, _, _} -> {error, "unicode error"} ;
                               X                  -> {token,{'chr', TokenLine, X}}
@@ -38,8 +38,6 @@ true   : {token, {'true', TokenLine}}.
 Erlang code.
 -compile(inline).
 -dialyzer([{nowarn_function, [yyrev/2]}]).
-
-strip(TokenChars,TokenLen) -> lists:sublist(TokenChars, 2, TokenLen - 2).
 
 unescape([$\\,$\"|Cs]) -> [$\"|unescape(Cs)];
 unescape([$\\,$\\|Cs]) -> [$\\|unescape(Cs)];
@@ -61,6 +59,3 @@ unescape([]) -> [].
 dehex(C) when C >= $0, C =< $9 -> C - $0;
 dehex(C) when C >= $a, C =< $f -> C - $a + 10;
 dehex(C) when C >= $A, C =< $F -> C - $A + 10.
-
-parse_string(StringChars) ->
-unescape(StringChars).
