@@ -51,7 +51,7 @@ mapify(X) -> cast(X).
 recordify(Obj)
    when is_list(Obj)
    -> % Replace binary keys by atom key, and detect values types
-                  R = lists:flatmap(fun({K, V}) -> [{list_to_atom(binary_to_list(K)), cast(V)}] end, Obj),
+                  R = lists:flatmap(fun({K, V}) -> [{erlang:binary_to_atom(K, utf8), cast(V)}] end, Obj),
                   T = lists:flatmap(fun({K, V}) -> [{K, detect_type(V)}] end, R),
                   % Hash Erlang term for ad hoc record name
                   H = list_to_atom(integer_to_list(erlang:phash2(T))),
@@ -167,7 +167,7 @@ create_module(H, T) ->
 
 parse_forms(C) ->
          Code = lists:flatten(C),
-         case erl_scan:string(lists:flatten(Code)) of
+         case erl_scan:string(Code) of
               {ok, S, _} ->  case erl_parse:parse_form(S) of
                                  {ok, PF}    -> PF ;
                                  {error, Ei} -> erlang:display({parse_error, Ei, io_lib:format("~ts",[Code])}), false
