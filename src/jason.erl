@@ -238,7 +238,11 @@ decode_file(F) when is_list(F) -> decode_file(F, []).
 
 decode_file(F, Opt) when is_list(F) ->
    try
-      {ok, B} = file:read_file(F),
+      % Use raw reading, and use real error from read_file otherwise
+      B = case erl_prim_loader:get_file(F) of
+               error -> {ok, BA} = file:read_file(F), BA;
+               {ok, BB, _} -> BB
+          end,
       jason:decode(B, Opt)
    catch
       throw:Term   -> Term ;
