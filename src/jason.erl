@@ -185,6 +185,8 @@ decode(Json, Opt) when is_atom(Json)   -> decode(atom_to_list(Json), Opt);
 decode(Json, Opt) when is_binary(Json) -> decode(binary_to_list(Json), Opt);
 decode(Json, Opt) when is_list(Json)   ->
    try
+      O = options(Opt),
+      put(jason_records, O#opt.records),
       {ok, X, _} = jason_lex:string(Json),
       Mode = proplists:get_value(mode, Opt),
       put(jason_mode, Mode),

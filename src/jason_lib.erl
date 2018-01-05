@@ -51,22 +51,37 @@ mapify(X) -> cast(X).
 recordify(Obj)
    when is_list(Obj)
    -> % Replace binary keys by atom key, and detect values types
-                  R = lists:flatmap(fun({K, V}) -> [{erlang:binary_to_atom(K, utf8), cast(V)}] end, Obj),
-                  T = lists:flatmap(fun({K, V}) -> [{K, detect_type(V)}] end, R),
-                  % Hash Erlang term for ad hoc record name
-                  H = list_to_atom(integer_to_list(erlang:phash2(T))),
-                  % Create module for this record handling if not existing
-                  case get(jason_adhoc) of
-                       undefined -> put(jason_adhoc, []);
-                       _         -> ok
-                  end,
-                  case lists:any(fun(X) -> case X of H -> true; _ -> false end end, get(jason_adhoc)) of
-                      true  -> ok ;
-                      false -> create_module(H, T)
-                  end,
-                  % Create record
-                  V = lists:flatmap(fun({_, Z}) -> [Z] end, R),
-                  erlang:list_to_tuple([H] ++ V).
+      R = lists:flatmap(fun({K, V}) -> [{erlang:binary_to_atom(K, utf8), cast(V)}] end, Obj),
+      T = lists:flatmap(fun({K, V}) -> [{K, detect_type(V)}] end, R),
+      CR = case get(jason_records) of
+               [] -> '' ;
+               undefined -> '' ;
+               X  -> % Some records announced, check if we find it
+                     Keys = lists:flatmap(fun({K, _}) -> [K] end, R),
+                     case lists:keyfind(Keys, 2, X) of
+                           false -> '' ;
+                           {F, _}     -> F
+                     end
+           end,
+
+      % Hash Erlang term for ad hoc record name if necessary otherwise use record name detected
+      H = case CR of
+               '' -> HH = list_to_atom(integer_to_list(erlang:phash2(T))),
+                     % Create module for this record handling if not existing
+                     case get(jason_adhoc) of
+                           undefined -> put(jason_adhoc, []);
+                           _         -> ok
+                     end,
+                     case lists:any(fun(X) -> case X of HH -> true; _ -> false end end, get(jason_adhoc)) of
+                           true  -> ok ;
+                           false -> create_module(HH, T)
+                     end,
+                     HH;
+               RN -> RN
+          end,
+      % Create record
+      V = lists:flatmap(fun({_, Z}) -> [Z] end, R),
+      erlang:list_to_tuple([H] ++ V).
 
 %%==============================================================================
 %% @doc Detect type of data
