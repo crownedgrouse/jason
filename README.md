@@ -5,24 +5,6 @@ Work still in progress...  but Beta testing allowed !
 
 `jason` is a JSON encode/decode library written in Erlang.
 
-Yet another Nth JSON Erlang project, while there are already good ones ?
-
-Yes, `jason` offer features mainly for Erlang records handling, which are not widely proposed in other projects.
-
-`jason` do not use NIF, so if performance is your main interest, see other well known projects using NIFs. However see [Benchmark](https://github.com/crownedgrouse/jason/wiki/Benchmark).
-
-So what makes `jason` usefull for me, then ?
-
-* `jason`'s bias is to be able to [encode and decode records at runtime](https://github.com/crownedgrouse/jason/wiki/Records),
-without any code manipulation at compile time.
-This make `jason` easy to use, with a minimal footprint in your own source code.
-* `jason` let you easily convert [JSON object to record](https://github.com/crownedgrouse/jason/wiki/Records) specification, and create for
-you ad-hoc modules to handle records. Even with deeply nested JSON objects.
-* `jason` allow you to use [JSON to records](https://github.com/crownedgrouse/jason/wiki/Records) translation even if the JSON source is not stable and JSON object can change without any warning. This is particulary interesting when JSON source is coming from third party.
-* Float are converted with automatic precision without need to set a precision depth.
-* [Pretty printing](https://github.com/crownedgrouse/jason/wiki/Pretty-printing) JSON in several indentation format is another rare feature that `jason` gives you, among others.
-* Only very few options to be user friendly.
-
 See [Wiki](https://github.com/crownedgrouse/jason/wiki) for documentation and tutorial.
 
 Specifications :
@@ -33,7 +15,7 @@ Specifications :
    * proplists
    * maps
    * records with automatic ad hoc module loaded for record handling
-* No `parse_transform`
+* No `parse_transform` . Record definitions can be given as arguments or extracted from module(s) abstract code at runtime.
 
 ## Data types ##
 jason:types/0 show in console how Erlang types are converted to JSON and back to Erlang data.
