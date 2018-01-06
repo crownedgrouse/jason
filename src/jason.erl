@@ -80,10 +80,21 @@ encode(Term) -> encode(Term, []).
 
 encode(Term, O) ->
    Opt = options(O),
-   Compact = lists:flatten(encode(Term, Opt, left, 0)),
-   case Opt#opt.indent of
-      ""     -> Compact ;
-      I      -> pp(Compact, I) % TODO
+   try
+      Compact = lists:flatten(encode(Term, Opt, left, 0)),
+      Res = case Opt#opt.indent of
+                ""     -> Compact ;
+                I      -> pp(Compact, I) % TODO
+            end,
+      case proplists:get_value(return, O) of
+         tuple -> {ok, Res};
+         _     -> Res
+      end
+   catch
+      throw:Reason ->  case proplists:get_value(return, O) of
+                           tuple -> {error, Reason};
+                           _     -> throw(Reason)
+                       end
    end.
 % MAP
 encode(Term, Opt, Side, Depth)
