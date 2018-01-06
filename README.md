@@ -93,6 +93,9 @@ any                     -> "any"                -> <<"any">>
 %  mode=record
 {r,1,<<"ab">>}          -> {"k1": 1,"k2": "ab"} -> {'8056669',1,"ab"}
                                                 with -record('8056669', {k1  = 0  :: integer(), k2  = []  :: list()}).
+
+%  mode=record - decoding using option [{records, [{r, [k1,k2]}]}]
+                                                -> {r,1,"ab"}
 ```
 
 
