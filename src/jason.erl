@@ -138,12 +138,35 @@ encode([{_, _}| _] = Term, Opt, _, Depth)
                               end, [], Term),
             "{" ++ string:join(X, ",") ++ "}"
          ;
+% Date Time
+encode({{Y, M, D}, {H, I, S}}, _Opt, _Side, _Depth)
+    when is_integer(H),is_integer(I),is_integer(S),
+         is_integer(Y),is_integer(M),is_integer(D)
+         -> lists:flatten(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",[Y, M, D, H, I, S]));
+% Date Time
+encode({{Y, M, D}, {H, I, S}}, _Opt, _Side, _Depth)
+    when is_integer(H),is_integer(I),is_float(S),
+         is_integer(Y),is_integer(M),is_integer(D),
+         (S < 60.0)
+         -> lists:flatten(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~.3fZ",[Y, M, D, H, I, S]));
+% Time
+encode({H, I, S}, _Opt, _Side, _Depth)
+    when is_integer(H),is_integer(I),is_integer(S),
+         (H >= 0),(H < 24),(I >= 0),(I < 60),(S >= 0),(S < 60)
+         -> lists:flatten(io_lib:format("~2..0w:~2..0w:~2..0w",[H, I, S]));
+% Date
+encode({Y, M, D}, _Opt, _Side, _Depth)
+    when is_integer(Y),is_integer(M),is_integer(D),
+         (M > 0),(M < 13),(D > 0),(D < 32)
+         -> lists:flatten(io_lib:format("~4..0w-~2..0w-~2..0w",[Y, M, D]));
+% Tuples
 encode(Term, Opt, Side, Depth)
    when is_tuple(Term),
    (tuple_size(Term) > 1) ->
          case element(1, Term) of
                X when is_atom(X) -> encode(Term, Opt#opt{mode='record'}, Side, Depth);
-               _ -> encode([Term], Opt, Side, Depth)
+               _ when (tuple_size(Term) == 2 )-> encode([Term], Opt, Side, Depth);
+               _ -> throw({'invalid_term', Term, Depth})
          end;
 encode({L}, Opt, Side, Depth)
    when is_list(L) -> encode(L, Opt, Side, Depth) ;
@@ -528,6 +551,8 @@ BIn1 = jason:encode(Bin1),
 {ok, [{_, BIN1}]} = jason:decode("{ \"key\":"++  BIn1 ++ "}", [{return, tuple}]),
 io:format("~n%% Binary (key/value) mode=struct (default)~n~p\t\t-> ~s \t\t-> ~p~n",[Bin1, BIn1, BIN1]),
 
+% Date TODO
+
 % STRUCT
 Bin2s = {<<"abc">>,<<"def">>},
 BIn2s = jason:encode(Bin2s),
@@ -623,8 +648,6 @@ io:format("\t\t\t\t\t\twith ~s~n",[R5:def()]),
 
 % TODO transcode record name
 {ok, BIN6r} = jason:decode(BIn5r, [{mode, 'record'}, {records, [{r, [k1,k2]}]}, {return, tuple}]),
-R6 = element(1, BIN6r),
-io:format("~n%  mode=record - decoding using option [{records, [{r, [k1,k2]}]}]~n\t\t\t\t\t\t-> ~p ~n",[BIN6r]),
-io:format("\t\t\t\t\t\twith ~s~n",[R6:def()])
+io:format("~n%  mode=record - decoding using option [{records, [{r, [k1,k2]}]}]~n\t\t\t\t\t\t-> ~p ~n",[BIN6r])
 .
 
