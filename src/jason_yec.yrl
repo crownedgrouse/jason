@@ -9,7 +9,7 @@ Rootsymbol json.
 json -> array   : '$1' .
 json -> object  : '$1' .
 json -> number  : '$1' .
-json -> string  : '$1' .
+json -> string  : detect_date('$1') .
 json -> literal : '$1' .
 
 array  -> 'b-a' 'e-a' : [].
@@ -59,7 +59,7 @@ value -> literal : '$1'.
 value -> object  : '$1'.
 value -> array   : '$1'.
 value -> number  : '$1'.
-value -> string  : '$1'.
+value -> string  : detect_date('$1').
 
 literal -> true  : true.
 literal -> false : false.
@@ -68,4 +68,19 @@ literal -> null  : null.
 Erlang code.
 -compile(inline).
 -compile([native, {hipe, [o3]}]).
+
+detect_date(Data) when is_binary(Data),(byte_size(Data) == 24)  ->
+    case io_lib:fread("~d-~d-~dT~d:~d:~fZ", binary_to_list(Data)) of
+         {ok,[Y,M,D,H,I,S],[]} -> {{Y,M,D}, {H,I,S}};
+         _ -> Data
+    end;
+
+detect_date(Data) when is_binary(Data),(byte_size(Data) == 20)  ->
+    case io_lib:fread("~d-~d-~dT~d:~d:~dZ", binary_to_list(Data)) of
+         {ok, [Y, M, D, H, I, S],[]} -> {{Y,M,D}, {H,I,S}} ;
+         _  -> Data
+    end;
+
+detect_date(Data) -> Data.
+
 

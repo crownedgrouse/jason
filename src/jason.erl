@@ -141,24 +141,27 @@ encode([{_, _}| _] = Term, Opt, _, Depth)
 % Date Time
 encode({{Y, M, D}, {H, I, S}}, _Opt, _Side, _Depth)
     when is_integer(H),is_integer(I),is_integer(S),
-         is_integer(Y),is_integer(M),is_integer(D)
-         -> lists:flatten(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",[Y, M, D, H, I, S]));
+         is_integer(Y),is_integer(M),is_integer(D),
+         (M > 0),(M < 13),(D > 0),(D < 32),
+         (H >= 0),(H < 24),(I >= 0),(I < 60),(S >= 0),(S < 60)
+         -> lists:flatten(io_lib:format("\"~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ\"",[Y, M, D, H, I, S]));
 % Date Time
 encode({{Y, M, D}, {H, I, S}}, _Opt, _Side, _Depth)
     when is_integer(H),is_integer(I),is_float(S),
          is_integer(Y),is_integer(M),is_integer(D),
-         (S < 60.0)
-         -> lists:flatten(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~.3fZ",[Y, M, D, H, I, S]));
+         (M > 0),(M < 13),(D > 0),(D < 32),
+         (H >= 0),(H < 24),(I >= 0),(I < 60),(S >= 0),(S < 60.0)
+         -> lists:flatten(io_lib:format("\"~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~6.3.0fZ\"",[Y, M, D, H, I, S]));
 % Time
 encode({H, I, S}, _Opt, _Side, _Depth)
     when is_integer(H),is_integer(I),is_integer(S),
          (H >= 0),(H < 24),(I >= 0),(I < 60),(S >= 0),(S < 60)
-         -> lists:flatten(io_lib:format("~2..0w:~2..0w:~2..0w",[H, I, S]));
+         -> lists:flatten(io_lib:format("\"~2..0w:~2..0w:~2..0w\"",[H, I, S]));
 % Date
 encode({Y, M, D}, _Opt, _Side, _Depth)
     when is_integer(Y),is_integer(M),is_integer(D),
          (M > 0),(M < 13),(D > 0),(D < 32)
-         -> lists:flatten(io_lib:format("~4..0w-~2..0w-~2..0w",[Y, M, D]));
+         -> lists:flatten(io_lib:format("\"~4..0w-~2..0w-~2..0w\"",[Y, M, D]));
 % Tuples
 encode(Term, Opt, Side, Depth)
    when is_tuple(Term),
@@ -545,13 +548,23 @@ List2 = ['a',"b",<<"c">>],
 LIst2 = jason:encode(List2),
 {ok, LISt2} = jason:decode(LIst2, [{return, tuple}]),
 io:format("~p\t\t-> ~s \t-> ~p ~n",[List2, LIst2, LISt2]),
+
+% Date
+Date1 = {{1970,1,1}, {0,0,0}},
+DAte1 = jason:encode(Date1),
+{ok, DATe1} = jason:decode(DAte1, [{return, tuple}]),
+io:format("~n%% Date~n~p\t-> ~s \t-> ~p ~n",[Date1, DAte1, DATe1]),
+
+Date2 = {{1970,1,1}, {0,0,0.0}},
+DAte2 = jason:encode(Date2),
+{ok, DATe2} = jason:decode(DAte2, [{return, tuple}]),
+io:format("~p\t-> ~s \t-> ~p ~n",[Date2, DAte2, DATe2]),
+
 % Binary
 Bin1 = <<"abc">>,
 BIn1 = jason:encode(Bin1),
 {ok, [{_, BIN1}]} = jason:decode("{ \"key\":"++  BIn1 ++ "}", [{return, tuple}]),
 io:format("~n%% Binary (key/value) mode=struct (default)~n~p\t\t-> ~s \t\t-> ~p~n",[Bin1, BIn1, BIN1]),
-
-% Date TODO
 
 % STRUCT
 Bin2s = {<<"abc">>,<<"def">>},

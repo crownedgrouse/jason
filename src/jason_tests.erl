@@ -45,6 +45,13 @@ jason_decode_types_test() ->
 % ["a","b","c"]        -> [<<"a">>,<<"b">>,<<"c">>]
 ,?assertEqual([<<"a">>,<<"b">>,<<"c">>], jason:decode('["a","b","c"]'))
 
+%% Dates
+%% {{1970,1,1},{0,0,0}}    -> "1970-01-01T00:00:00Z"
+,?assertEqual({{1970,1,1},{0,0,0}}, jason:decode("\"1970-01-01T00:00:00Z\""))
+%% {{1970,1,1},{0,0,0}}    -> "1970-01-01T00:00:00.000Z"
+,?assertEqual({{1970,1,1},{0,0,0.0}}, jason:decode("\"1970-01-01T00:00:00.000Z\""))
+
+
 %% Binary (key/value) mode=struct (default)
 % "abc"                -> <<"abc">>
 ,?assertEqual(<<"abc">>, jason:decode('"abc"'))

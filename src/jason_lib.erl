@@ -32,12 +32,14 @@
 %% @end
 -spec mapify(any()) -> any().
 
-mapify([{_,_}|_T] = Obj) ->
+mapify([{_,_}|_T] = Obj) when is_list(Obj)  ->
           {_, M} = lists:mapfoldl(fun({K, V}, Acc) -> {{K, V}, Acc#{safe_list_to_atom(binary_to_list(K)) => mapify(V)}} end , #{}, Obj),
           M;
-mapify([_H|_T] = Obj) ->
+mapify([_H|_T] = Obj) when is_list(Obj) ->
           {_, M} = lists:mapfoldl(fun(Z, Acc) -> {Z, Acc ++ [mapify(Z)]} end , [], Obj),
           M;
+mapify({K,V}) when is_tuple(K), is_tuple(V) % Date
+          -> {K, V} ;
 mapify({K, V}) when is_list(V) -> #{safe_list_to_atom(binary_to_list(K)) => mapify(V)};
 mapify({K, V}) -> #{safe_list_to_atom(binary_to_list(K)) => cast(V)};
 mapify(X) -> cast(X).
@@ -92,6 +94,8 @@ detect_type(V) when is_atom(V)    -> literal ;
 detect_type(V) when is_float(V)   -> float ;
 detect_type(V) when is_integer(V) -> integer ;
 detect_type(V) when is_list(V)    -> list;
+detect_type({K,V}) when is_tuple(K),is_tuple(V)
+                                  -> datetime;
 detect_type(V) when is_tuple(V)   -> {record, element(1, V)}.
 
 %%==============================================================================
@@ -110,7 +114,8 @@ create_module(H, T) ->
                         [string:join(lists:flatmap(fun(K) -> [io_lib:format("~p/1,~p/2", [K,K])] end, Ks), ", ")])),
 
       % Json types definition
-      M3 = parse_forms(io_lib:format("-type literal() :: null | true | false .~n",[])),
+      M3  = parse_forms(io_lib:format("-type literal() :: null | true | false .~n",[])),
+      M31 = parse_forms(io_lib:format("-type datetime() :: calendar:datetime() .~n",[])),
 
       % Record definition
       DefT = string:join(lists:flatmap(fun({K, V}) ->
@@ -119,7 +124,8 @@ create_module(H, T) ->
                                           integer -> " = 0 " ;
                                           float   -> " = 0.0 " ;
                                           list    -> " = [] " ;
-                                          literal -> " = null "
+                                          literal -> " = null ";
+                                          datetime-> " = {{1970,1,1},{0,0,0}}"
                                      end,
                            Type1 =    case V of
                                           {record, A} -> "'" ++  atom_to_list(A) ++ "':'" ++ atom_to_list(A) ++ "'" ;
@@ -146,13 +152,14 @@ create_module(H, T) ->
                                           integer -> ",is_integer(V) " ;
                                           float   -> ",is_float(V) " ;
                                           list    -> ",is_list(V) " ;
-                                          literal -> ",is_atom(V),((V == 'true') or (V == 'false') or (V == 'null')) "
+                                          literal -> ",is_atom(V),((V == 'true') or (V == 'false') or (V == 'null')) ";
+                                          datetime-> ",is_tuple(V) "
                                end,
                            [parse_forms(io_lib:format("~p(#~p{~p = X}) -> X.~n", [K, H, K])),
                             parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p)~s -> R#~p{~p = V}.~n",
                                                       [K, H, G, H, K]))] end, T),
       % Compile forms
-      Binary = case compile:forms(lists:flatten([M1,M10,M2,M3,M40,M41,M42,M50,M51,M52,M53,M54])) of
+      Binary = case compile:forms(lists:flatten([M1,M10,M2,M3,M31,M40,M41,M42,M50,M51,M52,M53,M54])) of
                   {ok, _, B} -> B ;
                   {ok, _, B, Warnings} -> io:format("Warning : ~p~n", [Warnings]), B ;
                   error -> io:format("Error while compiling : ~p~n", [H]),
@@ -199,15 +206,19 @@ parse_forms(C) ->
 proplistify([{K,V}])
       when is_binary(K)      -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
 proplistify([{K,V}])         -> [{proplistify(K), proplistify(V)}];
-proplistify([{_,_}|_T] = R)  -> lists:flatmap(fun(Z) -> case Z of
-                                                               {K, V} when is_binary(K) -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
-                                                               {K, V} -> [{proplistify(K), proplistify(V)}];
-                                                               O      -> [cast(O)]
-                                                          end end, R);
-proplistify([_H|_T] = R)     -> case io_lib:printable_unicode_list(R) of
+proplistify([{_,_}|_T] = R)  when is_list(R)
+                             -> lists:flatmap(fun(Z) -> case Z of
+                                    {K, V} when is_binary(K) -> [{safe_list_to_atom(binary_to_list(K)), proplistify(V)}];
+                                    {K, V} -> [{proplistify(K), proplistify(V)}];
+                                    O      -> [cast(O)]
+                                 end end, R);
+proplistify([_H|_T] = R) when is_list(R)
+                             -> case io_lib:printable_unicode_list(R) of
                                      false -> lists:flatmap(fun(Z) -> [proplistify(Z)] end, R);
                                      true  -> cast(R)
                                 end;
+proplistify({K,V}) when is_tuple(K),is_tuple(V) % Date
+                             -> {K,V} ;
 proplistify({K,V})           -> {safe_list_to_atom(binary_to_list(K)), proplistify(V)};
 proplistify(R)               -> cast(R).
 
