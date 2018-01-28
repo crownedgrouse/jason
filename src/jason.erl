@@ -53,7 +53,7 @@ pp(C, Style) -> jason_pp:indent(C, Style).
 %%==============================================================================
 %% @doc Encode Erlang data to JSON file
 %% @end
--spec encode_file(term(), list()) -> 'ok'.
+-spec encode_file(term(), list()) -> 'ok' | {error, atom()}.
 
 encode_file(Term, Target) when is_list(Target) -> encode_file(Term, Target, []).
 
@@ -209,14 +209,14 @@ encode(Term, Opt, _, Depth)
 %%==============================================================================
 %% @doc Decode JSON data
 %% @end
--spec decode(any()) -> tuple().
+-spec decode(any()) -> any().
 
 decode(Json) -> decode(Json, []).
 
 %%==============================================================================
 %% @doc Decode JSON data with options
 %% @end
--spec decode(any(), list()) -> tuple().
+-spec decode(any(), list()) -> any().
 
 decode(Json, Opt) when is_atom(Json)   -> decode(atom_to_list(Json), Opt);
 decode(Json, Opt) when is_binary(Json) -> decode(binary_to_list(Json), Opt);
@@ -266,14 +266,14 @@ decode(Json, Opt) when is_list(Json)   ->
 %%==============================================================================
 %% @doc Decode JSON file
 %% @end
--spec decode_file(list()) -> tuple().
+-spec decode_file(list()) -> any().
 
 decode_file(F) when is_list(F) -> decode_file(F, []).
 
 %%==============================================================================
 %% @doc Decode JSON file with options
 %% @end
--spec decode_file(list(), list()) -> tuple().
+-spec decode_file(list(), list()) -> any().
 
 decode_file(F, Opt) when is_list(F) ->
    try
@@ -387,6 +387,8 @@ options(O) ->
 %%==============================================================================
 %% @doc Get records info
 %% @end
+-spec get_records(any()) -> list() | no_return().
+
 get_records(X) when is_list(X)
                     -> lists:flatmap(fun(E) -> [get_records(E)] end, X) ;
 
@@ -418,6 +420,10 @@ get_records(X) when is_atom(X)
 get_records(_) -> throw( {0, {invalid, records}}).
 
 
+%%==============================================================================
+%% @doc Extract records in abstract code
+%% @end
+-spec extract_records_ac(list()) -> list().
 
 %   [{attribute,1,file,{"src/jason_pp.erl",1}},
 %   {attribute,26,module,jason_pp},
@@ -471,6 +477,8 @@ get_precision(F, I, P) when is_float(F) ->
 %%==============================================================================
 %% @doc floor as local function since erlang:floor/1 not available in older release
 %% @end
+-spec lfloor(float()) -> integer().
+
 lfloor(X) ->
     T = trunc(X),
     case (X - T) of

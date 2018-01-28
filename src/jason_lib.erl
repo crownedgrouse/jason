@@ -257,6 +257,8 @@ append_file(Filename, Bytes)
 %%==============================================================================
 %% @doc Safe list to atom (check > 255 of UTF8)
 %% @end
+-spec safe_list_to_atom(list()) -> atom() | binary().
+
 safe_list_to_atom(L) -> R = case catch list_to_atom(L) of
                                  {'EXIT', _} -> list_to_binary(L);
                                  X -> X

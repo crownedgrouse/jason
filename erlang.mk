@@ -17,7 +17,7 @@
 ERLANG_MK_FILENAME := $(realpath $(lastword $(MAKEFILE_LIST)))
 export ERLANG_MK_FILENAME
 
-ERLANG_MK_VERSION = 2017.07.06-2-gb908a7a
+ERLANG_MK_VERSION = 2017.07.06-4-g05edf74
 ERLANG_MK_WITHOUT = 
 
 # Make 3.81 and 3.82 are deprecated.
@@ -4794,25 +4794,25 @@ ERLANG_HIPE ?=
 
 # Use kerl to enforce a specific Erlang/OTP version for a project.
 ifneq ($(strip $(ERLANG_OTP)),)
-export ERLANG_OTP
 export PATH := $(KERL_INSTALL_DIR)/$(ERLANG_OTP)/bin:$(PATH)
 $(eval $(call kerl_otp_target,$(ERLANG_OTP)))
 
 # Build Erlang/OTP only if it doesn't already exist.
-ifeq ($(wildcard $(KERL_INSTALL_DIR)/$(ERLANG_OTP)),)
-BUILD_ERLANG_OTP := $(shell $(MAKE) $(KERL_INSTALL_DIR)/$(ERLANG_OTP))
+ifeq ($(wildcard $(KERL_INSTALL_DIR)/$(ERLANG_OTP))$(BUILD_ERLANG_OTP),)
+$(info Building Erlang/OTP $(ERLANG_OTP)... Please wait...)
+$(shell $(MAKE) $(KERL_INSTALL_DIR)/$(ERLANG_OTP) ERLANG_OTP=$(ERLANG_OTP) BUILD_ERLANG_OTP=1 >&2)
 endif
 
 else
 # Same for a HiPE enabled VM.
 ifneq ($(strip $(ERLANG_HIPE)),)
-export ERLANG_HIPE
 export PATH := $(KERL_INSTALL_DIR)/$(ERLANG_HIPE)-native/bin:$(PATH)
 $(eval $(call kerl_hipe_target,$(ERLANG_HIPE)))
 
 # Build Erlang/OTP only if it doesn't already exist.
-ifeq ($(wildcard $(KERL_INSTALL_DIR)/$(ERLANG_HIPE)),)
-BUILD_ERLANG_OTP := $(shell $(MAKE) $(KERL_INSTALL_DIR)/$(ERLANG_HIPE))
+ifeq ($(wildcard $(KERL_INSTALL_DIR)/$(ERLANG_HIPE))$(BUILD_ERLANG_OTP),)
+$(info Building HiPE-enabled Erlang/OTP $(ERLANG_OTP)... Please wait...)
+$(shell $(MAKE) $(KERL_INSTALL_DIR)/$(ERLANG_HIPE) ERLANG_HIPE=$(ERLANG_HIPE) BUILD_ERLANG_OTP=1 >&2)
 endif
 
 endif
