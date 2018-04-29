@@ -266,8 +266,9 @@ safe_list_to_atom(L) -> R = case catch list_to_atom(L) of
                         R.
 
 %%==============================================================================
-%% @doc Detect encoding TODO
-%% @end
+%% doc Detect encoding 
+%%      TODO
+%% end
 %% 3.  Encoding
 %%
 %%   JSON text SHALL be encoded in Unicode.  The default encoding is

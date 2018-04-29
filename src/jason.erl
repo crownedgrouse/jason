@@ -296,16 +296,6 @@ decode_file(F, Opt) when is_list(F) ->
    end.
 
 %%==============================================================================
-%% @doc
-%% @end
-%decode_stream(F) when is_pid(F) -> decode_stream(F, [{chunks, 2048]).
-
-%%==============================================================================
-%% @doc
-%% @end
-%decode_stream(F, Opt) when is_pid(F) ->
-
-%%==============================================================================
 %% @doc Check if record definition was given in options
 %% @end
 -spec check_rec_def(atom(), list()) -> atom() | list().

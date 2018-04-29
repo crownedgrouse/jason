@@ -1,0 +1,35 @@
+@author Eric Pailleau <jason@crownedgrouse.com>
+@copyright 2018 crownedgrouse.com
+@version 1.0.2
+@title Welcome to the jason module documentation !
+@doc `jason' is a JSON encode/decode library written in Erlang.
+
+== Overview ==
+
+This project was mainly created for easy handling of JSON from/to Erlang records,
+but allow binary struct, proplists and maps formats.
+
+`jason' offer also a rare feature : pretty printing JSON in several indentation styles. 
+
+== Specifications ==
+<ul>
+<li> Pure Erlang (no NIF) </li>
+<li> Decoding use Leex/Yecc parser </li>
+<li> JSON object can be decoded in several formats : </li>
+	<ul>
+	   <li> binary struct </li>
+   	   <li> proplists </li>
+   	   <li> maps </li>
+   	   <li> records with automatic ad hoc module loaded for record handling</li>
+	</ul>
+<li> No `parse_transform' . Record definitions can be given as arguments or extracted from module(s) abstract code at runtime. </li>
+</ul>
+
+== Data types ==
+
+jason:types/0 show in console how Erlang types are converted to JSON and back to Erlang data.
+
+== Wiki ==
+
+See Wiki at [https://github.com/crownedgrouse/jason/wiki]  for documentation and tutorial.
+

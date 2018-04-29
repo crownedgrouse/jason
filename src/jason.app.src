@@ -1,0 +1,12 @@
+{application, jason,
+ [
+  {description, "JSON encode/decode library written in Erlang"},
+  {vsn, "1.0.2"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []},
+  {modules, []}
+]}.
