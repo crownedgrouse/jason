@@ -5,7 +5,7 @@
 ## Overview ##
 
 This project was mainly created for easy handling of JSON from/to Erlang records,
-but allow binary, proplists and maps formats.
+but allow binary struct, proplists and maps formats.
 
 `jason` offer also a rare feature : pretty printing JSON in several indentation styles. 
 
