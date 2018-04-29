@@ -1,14 +1,17 @@
 # jason
 
-## Overview ##
-
 `jason` is a JSON encode/decode library written in Erlang.
 
-This project was mainly created for easy JSON from/to Erlang records handling. 
+## Overview ##
+
+This project was mainly created for easy handling of JSON from/to Erlang records,
+but allow binary, proplists and maps formats.
+
+`jason` offer also a rare feature : pretty printing JSON in several indentation styles. 
 
 See [Wiki](https://github.com/crownedgrouse/jason/wiki) for documentation and tutorial.
 
-Specifications :
+## Specifications ##
 * Pure Erlang (no NIF)
 * Decoding use Leex/Yecc parser
 * JSON object can be decoded in several formats :
