@@ -1,9 +1,10 @@
 # jason
-Work still in progress...  but Beta testing allowed !
 
 ## Overview ##
 
 `jason` is a JSON encode/decode library written in Erlang.
+
+This project was mainly created for easy JSON from/to Erlang records handling. 
 
 See [Wiki](https://github.com/crownedgrouse/jason/wiki) for documentation and tutorial.
 
