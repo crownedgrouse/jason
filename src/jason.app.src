@@ -8,5 +8,6 @@
                   stdlib
                  ]},
   {env, []},
-  {modules, []}
+  {modules, []},
+  {pkg_name, "jason_erl"}
 ]}.
