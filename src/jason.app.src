@@ -9,5 +9,8 @@
                  ]},
   {env, []},
   {modules, []},
-  {pkg_name, "jason_erl"}
+  {pkg_name, "jason_erl"},
+  {licenses, ["ISC"]},
+  {maintainers, ["Eric Pailleau"]},
+  {links, [{"Github", "https://github.com/crownedgrouse/jason"}]}
 ]}.
