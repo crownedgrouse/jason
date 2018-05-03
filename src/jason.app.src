@@ -12,5 +12,6 @@
   {pkg_name, "jason_erl"},
   {licenses, ["ISC"]},
   {maintainers, ["Eric Pailleau"]},
-  {links, [{"Github", "https://github.com/crownedgrouse/jason"}]}
+  {links, [{"Github", "https://github.com/crownedgrouse/jason"},
+           {"Wiki", "https://github.com/crownedgrouse/jason/wiki"}]}
 ]}.
