@@ -7,6 +7,8 @@
 This project was mainly created for easy handling of JSON from/to Erlang records,
 but allow binary struct, proplists and maps formats.
 
+Project is available on hex.pm under name [jason_erl](https://hex.pm/packages/jason_erl).
+
 `jason` offer also a rare feature : pretty printing JSON in several indentation styles. 
 
 See [Wiki](https://github.com/crownedgrouse/jason/wiki) for documentation and tutorial.
