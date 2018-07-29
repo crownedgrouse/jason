@@ -94,6 +94,7 @@ detect_type(V) when is_atom(V)    -> literal ;
 detect_type(V) when is_float(V)   -> float ;
 detect_type(V) when is_integer(V) -> integer ;
 detect_type(V) when is_list(V)    -> list;
+detect_type(V) when is_binary(V)  -> binary;
 detect_type({K,V}) when is_tuple(K),is_tuple(V)
                                   -> datetime;
 detect_type(V) when is_tuple(V)   -> {record, element(1, V)}.
@@ -125,6 +126,7 @@ create_module(H, T) ->
                                           float   -> " = 0.0 " ;
                                           list    -> " = [] " ;
                                           literal -> " = null ";
+                                          binary  -> " = <<"">>";
                                           datetime-> " = {{1970,1,1},{0,0,0}}"
                                      end,
                            Type1 =    case V of
@@ -152,6 +154,7 @@ create_module(H, T) ->
                                           integer -> ",is_integer(V) " ;
                                           float   -> ",is_float(V) " ;
                                           list    -> ",is_list(V) " ;
+                                          binary  -> ",is_binary(V) " ;
                                           literal -> ",is_atom(V),((V == 'true') or (V == 'false') or (V == 'null')) ";
                                           datetime-> ",is_tuple(V) "
                                end,
@@ -228,16 +231,29 @@ proplistify(R)               -> cast(R).
 %% @end
 -spec cast(any()) -> any().
 
-cast(V) when is_binary(V) -> X = erlang:binary_to_list(V),
-                             case io_lib:printable_unicode_list(X) of
-                                  true  -> X;
-                                  false -> V
-                             end;
-cast(V) when is_list(V)   -> case io_lib:printable_unicode_list(V) of
-                                     false -> lists:flatmap(fun(Z) -> [cast(Z)] end, V);
-                                     true  -> V
-                             end;
-cast(V)                   -> V .
+cast(V) ->
+   case get(jason_binary) of
+      v  -> cast(V, binary);
+      kv -> cast(V, binary);
+      _  -> cast(V, undefined)
+   end.
+
+cast(V, binary) when is_binary(V) -> V ;
+
+cast(V, binary) when is_list(V) -> erlang:list_to_binary(V);
+
+cast(V, _) when is_binary(V) ->
+   X = erlang:binary_to_list(V),
+   case io_lib:printable_unicode_list(X) of
+      true  -> X;
+      false -> V
+   end;
+cast(V, _) when is_list(V)   ->
+   case io_lib:printable_unicode_list(V) of
+      false -> lists:flatmap(fun(Z) -> [cast(Z)] end, V);
+      true  -> V
+   end;
+cast(V, _)                   -> V .
 
 %%==============================================================================
 %% @doc Append data to file
@@ -259,14 +275,19 @@ append_file(Filename, Bytes)
 %% @end
 -spec safe_list_to_atom(list()) -> atom() | binary().
 
-safe_list_to_atom(L) -> R = case catch list_to_atom(L) of
-                                 {'EXIT', _} -> list_to_binary(L);
-                                 X -> X
-                            end,
-                        R.
+safe_list_to_atom(L) ->
+   R = case get(jason_binary) of
+            k  -> list_to_binary(L);
+            kv -> list_to_binary(L);
+            _  ->  case catch list_to_atom(L) of
+                        {'EXIT', _} -> list_to_binary(L);
+                        X -> X
+                     end
+         end,
+   R.
 
 %%==============================================================================
-%% doc Detect encoding 
+%% doc Detect encoding
 %%      TODO
 %% end
 %% 3.  Encoding
