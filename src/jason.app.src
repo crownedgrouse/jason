@@ -1,17 +1,13 @@
-{application, jason,
- [
-  {description, "JSON encode/decode library written in Erlang"},
-  {vsn, "1.1"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {env, []},
-  {modules, []},
-  {pkg_name, "jason_erl"},
-  {licenses, ["ISC"]},
-  {maintainers, ["Eric Pailleau"]},
-  {links, [{"Github", "https://github.com/crownedgrouse/jason"},
-           {"Wiki", "https://github.com/crownedgrouse/jason/wiki"}]}
-]}.
+{application,jason,
+             [{description,"JSON encode/decode library written in Erlang"},
+              {vsn,"1.1"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {env,[]},
+              {modules,[]},
+              {pkg_name,"jason_erl"},
+              {licenses,["ISC"]},
+              {maintainers,["Eric Pailleau"]},
+              {links,[{"Github","https://github.com/crownedgrouse/jason"},
+                      {"Wiki",
+                       "https://github.com/crownedgrouse/jason/wiki"}]}]}.

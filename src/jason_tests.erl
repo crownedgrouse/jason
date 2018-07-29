@@ -242,6 +242,29 @@ jason_decode_objects_test() ->
      % object: missing closing brace
      Input17 = <<"{\"1\":2 \"key\":\"value\"">>,
      ?assertMatch({error, _} , jason:decode(Input17, [{return, tuple}])),
+     %% BINARY
+     Input18 = <<"{\"1\":2,\"key\":\"value\"}">>,
+     %% PROPLIST
+     % object: proplist / binary k
+     ?assertMatch( {ok,[{<<"1">>,2},{<<"key">>,"value"}]}, jason:decode(Input18, [{return, tuple}, {binary, k}, {mode, proplist}])),
+     % object: proplist / binary v
+     ?assertMatch( {ok,[{'1',2},{key,<<"value">>}]} , jason:decode(Input18, [{return, tuple}, {binary, v}, {mode, proplist}])),
+     % object: proplist / binary kv
+     ?assertMatch( {ok,[{<<"1">>,2},{<<"key">>,<<"value">>}]} , jason:decode(Input18, [{return, tuple}, {binary, kv}, {mode, proplist}])),
+     %% MAP
+     % object: map / binary k
+     ?assertMatch({ok,#{<<"1">> := 2,<<"key">> := "value"}} , jason:decode(Input18, [{return, tuple}, {binary, k}, {mode, map}])),
+     % object: map / binary v
+     ?assertMatch({ok,#{'1' := 2,key := <<"value">>}} , jason:decode(Input18, [{return, tuple}, {binary, v}, {mode, map}])),
+     % object: map / binary kv
+     ?assertMatch({ok,#{<<"1">> := 2,<<"key">> := <<"value">>}} , jason:decode(Input18, [{return, tuple}, {binary, kv}, {mode, map}])),
+     %% RECORD
+     % object: record / binary k (does not change)
+     ?assertMatch({ok,{'132007953',2,"value"}} , jason:decode(Input18, [{return, tuple}, {binary, k}, {mode, record}])),
+     % object: record / binary v
+     ?assertMatch( {ok,{'83030046',2,<<"value">>}} , jason:decode(Input18, [{return, tuple}, {binary, v}, {mode, record}])),
+     % object: record / binary kv
+     ?assertMatch({ok,{'83030046',2,<<"value">>}} , jason:decode(Input18, [{return, tuple}, {binary, kv}, {mode, record}])),
      ok.
 
 

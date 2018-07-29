@@ -34,6 +34,7 @@
              ,indent  = false
              ,records = []     :: list()
              ,mode    = struct :: atom()
+             ,binary  = undefined :: atom()
              }).
 
 %%==============================================================================
@@ -224,9 +225,9 @@ decode(Json, Opt) when is_list(Json)   ->
    try
       O = options(Opt),
       put(jason_records, O#opt.records),
+      put(jason_binary, O#opt.binary),
+      put(jason_mode, O#opt.mode),
       {ok, X, _} = jason_lex:string(Json),
-      Mode = proplists:get_value(mode, Opt),
-      put(jason_mode, Mode),
       To = proplists:get_value(to, Opt),
       case valid_to_file(To) of
             skip        -> ok ;
@@ -369,10 +370,18 @@ options(O) ->
             'record' -> 'record' ;
             _        -> struct
        end,
+   B = case proplists:get_value(binary, O) of
+            k -> k ;
+            v -> v ;
+            kv -> kv ;
+            _ -> undefined
+
+       end,
    #opt{nl = N
       ,indent = I
       ,records = lists:flatten(R)
       ,mode = M
+      ,binary = B
       }.
 %%==============================================================================
 %% @doc Get records info

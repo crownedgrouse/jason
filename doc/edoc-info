@@ -1,3 +1,0 @@
-%% encoding: UTF-8
-{application,jason}.
-{modules,[jason,jason_lex,jason_lib,jason_pp,jason_tests,jason_yec]}.
