@@ -37,7 +37,7 @@ true   : {token, {'true', TokenLine}}.
 
 Erlang code.
 -compile(inline).
-%-compile([native, {hipe, [o3]}]).
+-compile([native, {hipe, [o3]}]).
 -dialyzer([{nowarn_function, [yyrev/2]}]).
 
 unescape([$\\,$\"|Cs]) -> [$\"|unescape(Cs)];
