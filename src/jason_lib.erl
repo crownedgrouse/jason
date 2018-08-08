@@ -24,7 +24,7 @@
 %%%-----------------------------------------------------------------------------
 -module(jason_lib).
 
--export([mapify/1, recordify/1, proplistify/1]).
+-export([mapify/1, recordify/1, proplistify/1, is_argonaut/1]).
 
 %% MAPS %%
 %%==============================================================================
@@ -65,18 +65,45 @@ recordify(Obj)
                            {F, _}     -> F
                      end
            end,
-
+      AR = case get(jason_aliases) of
+               [] -> '' ;
+               undefined -> '' ;
+               Y  -> % Some records announced, check if we find it
+                     Keys2 = lists:flatmap(fun({K, _}) -> [K] end, R),
+                     case lists:keyfind(Keys2, 2, Y) of
+                           false -> '' ;
+                           {F2, _}     -> {alias, F2}
+                     end
+           end,
+      CRX = case AR of
+                  '' -> case CR of
+                           '' -> '' ;
+                           _  -> CR
+                        end;
+                  _ -> AR
+            end,
+      % Create module for this record handling if not existing
+      case get(jason_adhoc) of
+            undefined -> put(jason_adhoc, []);
+            _         -> ok
+      end,
       % Hash Erlang term for ad hoc record name if necessary otherwise use record name detected
-      H = case CR of
-               '' -> HH = list_to_atom(integer_to_list(erlang:phash2(T))),
-                     % Create module for this record handling if not existing
-                     case get(jason_adhoc) of
-                           undefined -> put(jason_adhoc, []);
-                           _         -> ok
+      H = case CRX of
+               {alias, Aliase} ->
+                     case lists:any(fun(X) -> case X of Aliase -> true; _ -> false end end, get(jason_adhoc)) of
+                           true  -> ok ;
+                           false -> % Check if module is already loaded from a former dump on disk
+                                    case code:is_loaded(Aliase) of
+                                       false -> create_module(Aliase, T, true) ;
+                                       _     -> ok
+                                    end
                      end,
+                     Aliase;
+               '' -> HH = list_to_atom(integer_to_list(erlang:phash2(T))),
+
                      case lists:any(fun(X) -> case X of HH -> true; _ -> false end end, get(jason_adhoc)) of
                            true  -> ok ;
-                           false -> create_module(HH, T)
+                           false -> create_module(HH, T, false)
                      end,
                      HH;
                RN -> RN
@@ -102,9 +129,9 @@ detect_type(V) when is_tuple(V)   -> {record, element(1, V)}.
 %%==============================================================================
 %% @doc Create argonaut module for record handling
 %% @end
--spec create_module(atom(), list()) -> atom().
+-spec create_module(atom(), list(), atom()) -> atom().
 
-create_module(H, T) ->
+create_module(H, T, Mode) ->
       % Module declaration
       M1 = parse_forms(io_lib:format("-module(~p).~n", [H])),
       {Ks, _Ts} = lists:unzip(T),
@@ -162,7 +189,7 @@ create_module(H, T) ->
                             parse_forms(io_lib:format("~p(R, V) when is_record(R, ~p)~s -> R#~p{~p = V}.~n",
                                                       [K, H, G, H, K]))] end, T),
       % Compile forms
-      Binary = case compile:forms(lists:flatten([M1,M10,M2,M3,M31,M40,M41,M42,M50,M51,M52,M53,M54])) of
+      Binary = case compile:forms(lists:flatten([M1,M10,M2,M3,M31,M40,M41,M42,M50,M51,M52,M53,M54]),[debug_info]) of
                   {ok, _, B} -> B ;
                   {ok, _, B, Warnings} -> io:format("Warning : ~p~n", [Warnings]), B ;
                   error -> io:format("Error while compiling : ~p~n", [H]),
@@ -180,7 +207,18 @@ create_module(H, T) ->
           end,
 
       % Load module
-      case code:load_binary(H, atom_to_list(H), Binary) of
+      Target = case Mode of
+         true -> % Using aliases need to set a valid path in order to be able to dump them elsewhere
+               Dir = code:priv_dir(jason),
+               Dir1 = filename:join([Dir, "dump", atom_to_list(H)]),
+               ok = filelib:ensure_dir(filename:join([Dir1, "fakedir"])),
+               T1 = filename:join([Dir1, atom_to_list(H)++".beam"]),
+               ok = file:write_file(T1, Binary),
+               code:replace_path(H, Dir1),
+               T1;
+         _ -> atom_to_list(H)
+      end,
+      case code:load_binary(H, Target, Binary) of
          {module, _}    -> put(jason_adhoc, lists:flatten(get(jason_adhoc) ++ [H])) ;
          {error, _What} -> ok
       end.
@@ -309,3 +347,13 @@ safe_list_to_atom(L) ->
 %detect_encoding() -> {utf16, little} ;
 %detect_encoding(_) -> utf8 .
 
+%%==============================================================================
+%% @doc Check if a module is an argonaut
+-spec is_argonaut(atom()) -> true | false.
+
+is_argonaut(M) when is_atom(M) ->  Attr =  M:module_info(attributes),
+                                   case lists:keyfind(jason, 1, Attr) of
+                                          false -> false ;
+                                          {jason,[argonaut]} -> true ;
+                                          _ -> false
+                                   end.

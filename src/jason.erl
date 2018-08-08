@@ -29,13 +29,54 @@
 -export([decode_file/1, decode_file/2]).
 -export([encode_file/2, encode_file/3]).
 -export([pp/1, pp/2, types/0]).
+-export([dump/1, dump/2]).
 
 -record(opt, {nl      = []     :: list()
              ,indent  = false
              ,records = []     :: list()
              ,mode    = struct :: atom()
              ,binary  = undefined :: atom()
+             ,aliases = []     :: list()
              }).
+
+%%==============================================================================
+%% @doc Dump argonaut module of aliases to
+%% @end
+-spec dump(list()) -> ok | {error, atom(), list()}.
+
+dump(Dir) -> ML = case get(jason_adhoc) of
+                        [] -> erlang:loaded();
+                        Ad -> Ad
+                  end,
+             lists:foreach( fun(M) -> dump(Dir, M) end, ML).
+
+dump(Dir, Module) ->
+   case file:list_dir(Dir) of
+      {ok , _} ->
+               % Check if this module is really an argonaut
+               case jason_lib:is_argonaut(Module) of
+                  false -> {error, Module, "Not an argonaut module"} ;
+                  true  ->
+                          DirM = filename:join([Dir, erlang:atom_to_list(Module), "ebin"]),
+                          case filelib:ensure_dir(filename:join([DirM, "fakedir"])) of
+                             ok ->
+                                 % Check it is an aliase and not an argonaut (A .beam file exist on disk already)
+                                 case file:read_file_info(code:which(Module)) of
+                                    {error , _ } ->  {error, Module, "Not found on disk. Please use 'aliases' instead 'records'."};
+                                    {ok, _} -> % An aliase, let's continue
+                                                % Move .beam is Dir
+                                                Src = code:which(Module),
+                                                Dst = filename:join([DirM, filename:basename(Src)]),
+                                                ok = file:rename(Src, Dst),
+                                                % Change path
+                                                true = code:replace_path(Module, filename:dirname(Dst)),
+                                                ok
+                                 end;
+                           {error, R2 } -> {error, Module, file:format_error(R2)}
+               end
+          end;
+      {error, R1} -> {error, Module, file:format_error(R1)}
+   end.
 
 %%==============================================================================
 %% @doc Pretty print JSON data
@@ -224,6 +265,7 @@ decode(Json, Opt) when is_binary(Json) -> decode(binary_to_list(Json), Opt);
 decode(Json, Opt) when is_list(Json)   ->
    try
       O = options(Opt),
+      put(jason_aliases, O#opt.aliases),
       put(jason_records, O#opt.records),
       put(jason_binary, O#opt.binary),
       put(jason_mode, O#opt.mode),
@@ -357,6 +399,13 @@ options(O) ->
             false -> "" ;
             true  -> "\n"
        end,
+   A = case proplists:get_value(aliases, O) of
+            undefined -> [] ;
+            Y  when is_atom(Y)   -> get_records([Y]);
+            Y  when is_tuple(Y) -> get_records([Y]);
+            Y  when is_list(Y)  -> get_records(Y);
+            _  -> throw({0, {invalid, records}})
+       end,
    R = case proplists:get_value(records, O) of
             undefined -> [] ;
             X  when is_atom(X)   -> get_records([X]);
@@ -382,6 +431,7 @@ options(O) ->
       ,records = lists:flatten(R)
       ,mode = M
       ,binary = B
+      ,aliases = lists:flatten(A)
       }.
 %%==============================================================================
 %% @doc Get records info
