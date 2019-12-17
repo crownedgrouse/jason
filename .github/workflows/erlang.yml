@@ -18,4 +18,4 @@ jobs:
     - name: Run tests
       run: rebar3 eunit
     - name: Run Geas
-      run: GEAS_RANGE=">R14 <23" rebar3 geas
+      run: GEAS_RANGE=">R14 <22" rebar3 geas
