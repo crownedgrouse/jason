@@ -16,4 +16,6 @@ jobs:
     - name: Compile
       run: rebar3 compile
     - name: Run tests
-      run: rebar3 do eunit, geas
+      run: rebar3 eunit
+    - name: Run Geas
+      run: rebar3 geas
