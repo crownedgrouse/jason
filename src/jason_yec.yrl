@@ -67,7 +67,7 @@ literal -> null  : null.
 
 Erlang code.
 -compile(inline).
--compile([native, {hipe, [o3]}]).
+%-compile([native, {hipe, [o3]}]).
 
 detect_date(Data) when is_binary(Data),(byte_size(Data) == 24)  ->
     case io_lib:fread("~d-~d-~dT~d:~d:~fZ", binary_to_list(Data)) of
