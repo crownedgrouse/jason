@@ -10,8 +10,8 @@ jason_decode_options_test() ->
      ,?assertEqual({ok,[{<<"ab">>,<<"cd">>}]}, jason:decode('{"ab": "cd"}', [{return, tuple}]))
      ,?assertMatch({1, _}, catch jason:decode('{"ab": "cd"'))
      ,?assertMatch({error,{1,_}}, jason:decode('{"ab": "cd"', [{return, tuple}]))
-     ,?assertEqual(enoent, catch jason:decode_file(""))
-     ,?assertEqual({error, enoent}, jason:decode_file("", [{return, tuple}]))
+     ,?assertEqual(enoent, catch jason:decode_file("x"))
+     ,?assertEqual({error, enoent}, jason:decode_file("x", [{return, tuple}]))
      .
 
 jason_decode_types_test() ->
