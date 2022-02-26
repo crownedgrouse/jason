@@ -224,8 +224,12 @@ encode(Term, _Opt, _, _Depth)
    when is_integer(Term) -> integer_to_list(Term) ;
 % FLOAT
 encode(Term, _Opt, _, _Depth)
-   when is_float(Term) ->  Precision = get_precision(Term),
-                           [float_to_list(Term, [{decimals, Precision}, compact])] ;
+   when is_float(Term) ->  
+	case (catch float_to_list(Term, [short])) of
+                {'EXIT', _} -> Precision = get_precision(Term),
+                               [float_to_list(Term, [{decimals, Precision}, compact])] ;
+                X -> X
+        end;
 % BINARY
 encode(Term, _Opt, _, _Depth)
    when is_binary(Term) -> "\"" ++ binary_to_list(Term) ++ "\"";
