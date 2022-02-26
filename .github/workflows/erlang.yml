@@ -17,5 +17,3 @@ jobs:
       run: rebar3 compile
     - name: Run tests
       run: rebar3 eunit
-    - name: Run Geas
-      run: GEAS_RANGE=">R14 <23" rebar3 geas
