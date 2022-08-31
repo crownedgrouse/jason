@@ -63,7 +63,10 @@ value -> string  : detect_date('$1').
 
 literal -> true  : true.
 literal -> false : false.
-literal -> null  : null.
+literal -> null  : case get(jason_null_as_undefined) of
+                         true -> undefined;
+                         _ -> null
+                   end.
 
 Erlang code.
 -compile(inline).

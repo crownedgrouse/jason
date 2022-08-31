@@ -1,0 +1,7 @@
+/jason.d
+/.erlang.mk/
+/.jason.plt
+/deps
+/src/jason_lex.erl
+/src/jason_yec.erl
+/ebin

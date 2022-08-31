@@ -105,7 +105,8 @@ jason_decode_literals_test() ->
      %% Literals
      ?assertEqual({ok, false}, jason:decode(<<"false">>, [{return, tuple}])),
      ?assertEqual({ok, true}, jason:decode(<<"true">>, [{return, tuple}])),
-     ?assertEqual({ok, null} , jason:decode(<<"null">>, [{return, tuple}])).
+     ?assertEqual({ok, null}, jason:decode(<<"null">>, [{return, tuple}])),
+     ?assertEqual({ok, undefined}, jason:decode(<<"null">>, [{return, tuple}, {null_as_undefined, true}])).
 
 jason_decode_numbers_test() ->
      %% Numbers: Integer
@@ -211,6 +212,10 @@ jason_decode_arrays_test() ->
      % array: missing closing bracket
      Input10 = <<"[1, 2, \"abc def\", null">>,
      ?assertMatch({error, _}, jason:decode(Input10, [{return, tuple}])),
+     % a null in array decoded as undefined when null_as_undefined",
+     Input11    = <<"[1,2,\"abc def\",null]">>,
+     Expected11 = {ok, [1, 2, <<"abc def">>, undefined]},
+     ?assertEqual(Expected11, jason:decode(Input11, [{return, tuple}, {null_as_undefined, true}])),
      ok.
 
 jason_decode_objects_test() ->
@@ -265,6 +270,12 @@ jason_decode_objects_test() ->
      ?assertMatch( {ok,{'83030046',2,<<"value">>}} , jason:decode(Input18, [{return, tuple}, {binary, v}, {mode, record}])),
      % object: record / binary kv
      ?assertMatch({ok,{'83030046',2,<<"value">>}} , jason:decode(Input18, [{return, tuple}, {binary, kv}, {mode, record}])),
+     % object: record / null_as_undefined
+     Input19 = <<"{\"1\":2,\"key\":null}">>,
+     % null_as_undefined false
+     ?assertMatch({ok,{'49797875',2,null}} , jason:decode(Input19, [{return, tuple}, {binary, kv}, {mode, record}, {null_as_undefined, false}])),
+     % null_as_undefined true     
+     ?assertMatch({ok,{'49797875',2,undefined}} , jason:decode(Input19, [{return, tuple}, {binary, kv}, {mode, record}, {null_as_undefined, true}])),
      ok.
 
 
