@@ -1,4 +1,4 @@
-# jason [![Build Status](https://travis-ci.org/crownedgrouse/jason.svg?branch=master)](https://travis-ci.org/crownedgrouse/jason) #
+# jason ![Build status](https://github.com/crownedgrouse/jason/actions/workflows/erlang.yml/badge.svg) #
 
 `jason` is a JSON encode/decode library written in Erlang.
 
