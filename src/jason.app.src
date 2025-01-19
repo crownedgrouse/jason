@@ -1,6 +1,6 @@
 {application,jason,
              [{description,"JSON encode/decode library written in Erlang"},
-              {vsn,"1.2.0"},
+              {vsn,"1.3.0"},
               {registered,[]},
               {applications,[kernel,stdlib]},
               {env,[]},
@@ -8,6 +8,7 @@
               {pkg_name,"jason_erl"},
               {licenses,["ISC"]},
               {maintainers,["Eric Pailleau"]},
+	      {files, ["README.md", "src", "priv", "rebar.config", "Makefile", "erlang.mk"]},
               {links,[{"Github","https://github.com/crownedgrouse/jason"},
                       {"Wiki",
                        "https://github.com/crownedgrouse/jason/wiki"}]}]}.

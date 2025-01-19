@@ -30,14 +30,9 @@
 -export([encode_file/2, encode_file/3]).
 -export([pp/1, pp/2, types/0]).
 -export([dump/1, dump/2]).
+-export([decode_stream/1, decode_stream/2]).
 
--record(opt, {nl      = []     :: list()
-             ,indent  = false
-             ,records = []     :: list()
-             ,mode    = struct :: atom()
-             ,binary  = undefined :: atom()
-             ,aliases = []     :: list()
-             }).
+-include("jason.hrl").
 
 %%==============================================================================
 %% @doc Dump argonaut module of aliases to
@@ -121,7 +116,7 @@ encode(Term) -> encode(Term, []).
 -spec encode(any(), list()) -> list().
 
 encode(Term, O) ->
-   Opt = options(O),
+   Opt = jason_lib:options(O),
    try
       Compact = lists:flatten(encode(Term, Opt, left, 0)),
       Res = case Opt#opt.indent of
@@ -224,8 +219,12 @@ encode(Term, _Opt, _, _Depth)
    when is_integer(Term) -> integer_to_list(Term) ;
 % FLOAT
 encode(Term, _Opt, _, _Depth)
-   when is_float(Term) ->  Precision = get_precision(Term),
-                           [float_to_list(Term, [{decimals, Precision}, compact])] ;
+   when is_float(Term) ->
+	case (catch float_to_list(Term, [short])) of
+                {'EXIT', _} -> Precision = get_precision(Term),
+                               [float_to_list(Term, [{decimals, Precision}, compact])] ;
+                X -> X
+        end;
 % BINARY
 encode(Term, _Opt, _, _Depth)
    when is_binary(Term) -> "\"" ++ binary_to_list(Term) ++ "\"";
@@ -264,7 +263,7 @@ decode(Json, Opt) when is_atom(Json)   -> decode(atom_to_list(Json), Opt);
 decode(Json, Opt) when is_binary(Json) -> decode(binary_to_list(Json), Opt);
 decode(Json, Opt) when is_list(Json)   ->
    try
-      O = options(Opt),
+      O = jason_lib:options(Opt),
       put(jason_aliases, O#opt.aliases),
       put(jason_records, O#opt.records),
       put(jason_binary, O#opt.binary),
@@ -382,129 +381,40 @@ valid_to_file(To) when is_list(To) ->
 
 valid_to_file(_) -> skip.
 
-
 %%==============================================================================
-%% @doc Analyze options
+%% @doc Decode stream
+%%      Argument is an io_device() (either pid() or fd() from raw mode)
+%%      First call create a finite statemachine and return {ok, ref()} or {error, Reason}.
+%%      Where ref() is the finite state machine global name .
+%%      All subsequent calls to decode_stream(ref()) will return 'sofar',  'end' or {'sofar', Term}
+%%      Call to decode_stream(ref(), integer()) allow to specify how many bytes to read (sticky until another change).
+%%      Default to 1024 bytes at start.
+%%      'sofar' means that no JSON term could be decoded for the moment, another call(s) are needed.
 %% @end
--spec options(list()) -> tuple().
-
-options(O) ->
-   I = case proplists:get_value(indent, O) of
-            undefined -> "" ;
-            false -> "" ;
-            true  -> "   "
-       end,
-   N = case proplists:get_value(indent, O) of
-            undefined -> "" ;
-            false -> "" ;
-            true  -> "\n"
-       end,
-   A = case proplists:get_value(aliases, O) of
-            undefined -> [] ;
-            Y  when is_atom(Y)   -> get_records([Y]);
-            Y  when is_tuple(Y) -> get_records([Y]);
-            Y  when is_list(Y)  -> get_records(Y);
-            _  -> throw({0, {invalid, records}})
-       end,
-   R = case proplists:get_value(records, O) of
-            undefined -> [] ;
-            X  when is_atom(X)   -> get_records([X]);
-            X  when is_tuple(X) -> get_records([X]);
-            X  when is_list(X)  -> get_records(X);
-            _  -> throw({0, {invalid, records}})
-       end,
-   M = case proplists:get_value(mode, O) of
-            map      -> map ;
-            proplist -> proplist ;
-            'record' -> 'record' ;
-            _        -> struct
-       end,
-   B = case proplists:get_value(binary, O) of
-            k -> k ;
-            v -> v ;
-            kv -> kv ;
-            _ -> undefined
-
-       end,
-   #opt{nl = N
-      ,indent = I
-      ,records = lists:flatten(R)
-      ,mode = M
-      ,binary = B
-      ,aliases = lists:flatten(A)
-      }.
-%%==============================================================================
-%% @doc Get records info
-%% @end
--spec get_records(any()) -> list() | no_return().
-
-get_records(X) when is_list(X)
-                    -> lists:flatmap(fun(E) -> [get_records(E)] end, X) ;
-
-get_records(X) when is_tuple(X),
-                    is_atom(element(1, X)),
-                    is_list(element(2, X))
-                    -> % Check all entries are atoms
-                       case lists:all(fun(A) -> case is_atom(A) of true -> true ; _ -> false end end, element(2, X)) of
-                           true  -> X ;
-                           false -> throw({0, {invalid, records}}),
-                                    []
-                       end;
-
-get_records(X) when is_atom(X)
-                    -> % Extract record info from pid
-                       Beam = case code:which(X) of
-                                 cover_compiled -> "";
-                                 preloaded      -> "";
-                                 non_existing   -> "";
-                                 B              -> B
-                              end,
-                       case beam_lib:chunks( Beam,[abstract_code]) of
-                           {ok,{_, [{abstract_code, {_, Abs }}]}}
-                               -> extract_records_ac(Abs);
-                           _   -> throw( {0, {invalid, abstract_code}})
-
-                       end;
-
-get_records(_) -> throw( {0, {invalid, records}}).
 
 
-%%==============================================================================
-%% @doc Extract records in abstract code
-%% @end
--spec extract_records_ac(list()) -> list().
+decode_stream(R) when is_reference(R)
+   -> gen_statem:call({global, R}, read);
 
-%   [{attribute,1,file,{"src/jason_pp.erl",1}},
-%   {attribute,26,module,jason_pp},
-%   {attribute,28,export,[{indent,1},{indent,2}]},
-%   {attribute,30,record,
-%         {pp,[{record_field,30,{atom,30,style},{atom,30,ratliff}},
-%            {record_field,31,{atom,31,depth},{integer,31,0}},
-%            {record_field,32,{atom,32,nl},{string,32,[...]}},
-%            {record_field,33,{atom,33,tab},{string,33,...}},
-%            {record_field,34,{atom,34,...},{atom,...}}]}},
-%   {function,38,indent,1,
+decode_stream(S) when is_pid(S); is_tuple(S)
+   -> decode_stream(S, []).
 
-extract_records_ac(Abs) ->
-   Raw = lists:filter(fun(E) ->  case (is_tuple(E) and (size(E) > 2)) of
-                                     true -> case element(3, E) of
-                                                  record -> true ;
-                                                  _ -> false
-                                             end;
-                                      false -> false
-                                 end
-                                 end, Abs),
-   lists:flatmap(fun({attribute, _, record, {N, FF}}) ->
-                     F = lists:flatmap(fun(R) -> case element(1, R) of
-                                                      record_field -> {atom, _, RA} = element(3, R),
-                                                                      [RA];
-                                                      typed_record_field -> {typed_record_field, W, _} = R,
-                                                                            {atom, _, RT} = element(3, W),
-                                                                             [RT]
-                                                 end
-                                       end, FF),
-                     [{N, F}]
-                  end, Raw).
+decode_stream(R, B)
+   when is_reference(R)
+       ,is_integer(B)
+   ->
+      gen_statem:call({global, R}, {bytes, B}),
+      gen_statem:call({global, R}, read);
+
+decode_stream(S, Opt) when is_pid(S); is_tuple(S) ->
+   Ref = erlang:make_ref(),
+   case gen_statem:start_link({global, Ref}, jason_stream, {Ref, S, 1024, Opt}, []) of
+      {ok, _}         -> {ok, Ref};
+      ignore          -> {error, ignore} ;
+      {error, Reason} -> {error, Reason}
+   end.
+
+
 
 %%==============================================================================
 %% @doc Get precision of float
