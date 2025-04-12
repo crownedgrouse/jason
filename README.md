@@ -4,7 +4,7 @@
 
 **DEPRECATION NOTE: as a JSON library is now part of ERLANG/OTP, this library will be replaced by another in close future.**
 
-*`json` library will be used instead for parsing, encoding and decoding, but features will be kept. A new name will be chosen in order to be less confusing with the Elixir eponym libray.*
+*`json` library will be used instead for parsing, encoding and decoding, but features will be kept. A new name will be chosen in order to be less confusing with the Elixir eponym library.*
 
 ## Overview ##
 
