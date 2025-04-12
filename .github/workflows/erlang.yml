@@ -1,6 +1,13 @@
 name: Erlang CI
 
-on: [push]
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
 
 jobs:
 
@@ -9,13 +16,11 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: erlang:22.2
+      image: erlang:27.1
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - name: Compile
       run: rebar3 compile
     - name: Run tests
-      run: rebar3 eunit
-    - name: Run Geas
-      run: GEAS_RANGE=">R14 <23" rebar3 geas
+      run: rebar3 do eunit, ct

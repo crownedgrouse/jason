@@ -1,6 +1,10 @@
-# jason [![Build Status](https://travis-ci.org/crownedgrouse/jason.svg?branch=master)](https://travis-ci.org/crownedgrouse/jason) #
+# jason ![Build status](https://github.com/crownedgrouse/jason/actions/workflows/erlang.yml/badge.svg)  #
 
 `jason` is a JSON encode/decode library written in Erlang.
+
+**DEPRECATION NOTE: as a JSON library is now part of ERLANG/OTP, this library will be replaced by another in close future.**
+
+*`json` library will be used instead for parsing, encoding and decoding, but features will be kept. A new name will be chosen in order to be less confusing with the Elixir eponym libray.*
 
 ## Overview ##
 
